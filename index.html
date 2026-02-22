@@ -2,887 +2,592 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,maximum-scale=1.0">
-<title>Overtime — 3v3 Hockey</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>OVERTIME - Hockey</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-html,body{width:100%;height:100%;overflow:hidden;background:#111;font-family:'Segoe UI',Arial,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none;}
-canvas{display:block;width:100%;height:100%;}
-#ui-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;}
-#start-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#0a1628 0%,#1a3a5c 50%,#0a1628 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;pointer-events:all;}
-#start-screen h1{font-size:min(18vw,120px);color:#fff;text-shadow:0 0 40px #4af,0 0 80px #28f,0 4px 0 #036;letter-spacing:6px;margin-bottom:10px;font-weight:900;}
-#start-screen .sub{color:#8cf;font-size:min(4vw,22px);margin-bottom:40px;letter-spacing:3px;}
-#play-btn{background:linear-gradient(180deg,#ff4444,#cc0000);color:#fff;border:none;padding:18px 60px;font-size:min(6vw,32px);font-weight:700;border-radius:50px;cursor:pointer;letter-spacing:2px;box-shadow:0 4px 20px rgba(255,0,0,.4);transition:transform .1s;}
-#play-btn:active{transform:scale(.95);}
-#start-screen .controls-hint{color:#689;font-size:min(3vw,14px);margin-top:30px;text-align:center;line-height:1.8;}
-#hud{position:absolute;top:0;left:0;width:100%;display:flex;justify-content:center;align-items:flex-start;pointer-events:none;z-index:20;}
-#scoreboard{background:rgba(0,0,0,.75);color:#fff;padding:6px 20px;border-radius:0 0 12px 12px;display:flex;gap:20px;align-items:center;font-size:min(4.5vw,22px);font-weight:700;backdrop-filter:blur(4px);}
-#scoreboard .team{display:flex;align-items:center;gap:6px;}
-#scoreboard .blue{color:#4af;}
-#scoreboard .red{color:#f44;}
-#scoreboard .period{color:#aaa;font-size:.8em;}
-#msg-overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:min(10vw,60px);font-weight:900;text-shadow:0 0 30px #f44,0 0 60px #f00;pointer-events:none;z-index:30;opacity:0;transition:opacity .3s;}
-#touch-controls{position:absolute;bottom:0;left:0;width:100%;height:40%;pointer-events:all;z-index:15;display:none;}
-.touch-btn{position:absolute;width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;border:2px solid rgba(255,255,255,.3);}
-#btn-shoot{background:rgba(255,50,50,.4);right:20px;bottom:100px;}
-#btn-pass{background:rgba(50,150,255,.4);right:100px;bottom:40px;}
-#joystick-area{position:absolute;left:0;bottom:0;width:50%;height:100%;}
-#joystick-base{position:absolute;width:120px;height:120px;border-radius:50%;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);display:none;}
-#joystick-thumb{position:absolute;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.3);display:none;}
-#period-screen{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,20,.85);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:90;pointer-events:all;}
-#period-screen h2{color:#fff;font-size:min(8vw,48px);margin-bottom:10px;}
-#period-screen .score-display{color:#ccc;font-size:min(6vw,36px);margin-bottom:30px;}
-#period-screen button{background:linear-gradient(180deg,#4af,#28c);color:#fff;border:none;padding:14px 40px;font-size:min(5vw,24px);border-radius:40px;cursor:pointer;font-weight:700;}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#111; overflow:hidden; touch-action:none; font-family:'Segoe UI',Arial,sans-serif; }
+canvas { display:block; }
+#startScreen { position:fixed; inset:0; background:linear-gradient(180deg,#0a1628,#1a3a5c); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:100; }
+#startScreen h1 { font-size:72px; color:#fff; text-shadow:0 0 30px #0af,0 0 60px #06f; letter-spacing:12px; margin-bottom:40px; }
+#startScreen button { font-size:28px; padding:16px 60px; background:linear-gradient(180deg,#e22,#b00); color:#fff; border:none; border-radius:12px; cursor:pointer; letter-spacing:4px; }
+#startScreen button:hover { background:linear-gradient(180deg,#f44,#d22); }
+#hud { position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:10; display:none; background:rgba(0,0,0,0.7); border-radius:10px; padding:6px 20px; color:#fff; font-size:18px; text-align:center; min-width:260px; }
+#hud .score { font-size:32px; font-weight:bold; }
+#hud .period { font-size:14px; color:#aaa; }
+#controls { position:fixed; bottom:0; left:0; right:0; z-index:10; display:none; pointer-events:none; height:180px; }
+#joystickArea { position:absolute; left:20px; bottom:20px; width:140px; height:140px; pointer-events:auto; }
+#joystickBase { width:140px; height:140px; background:rgba(255,255,255,0.15); border-radius:50%; border:2px solid rgba(255,255,255,0.3); position:relative; }
+#joystickKnob { width:56px; height:56px; background:rgba(255,255,255,0.5); border-radius:50%; position:absolute; top:42px; left:42px; }
+#btnArea { position:absolute; right:20px; bottom:20px; pointer-events:auto; display:flex; gap:14px; }
+#btnArea button { width:70px; height:70px; border-radius:50%; border:2px solid rgba(255,255,255,0.4); font-size:13px; font-weight:bold; color:#fff; cursor:pointer; }
+#btnShoot { background:rgba(220,40,40,0.6); }
+#btnPass { background:rgba(40,120,220,0.6); }
+#goalOverlay { position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; pointer-events:none; }
+#goalOverlay .goalText { font-size:80px; color:#fff; font-weight:900; text-shadow:0 0 40px red,0 0 80px orange; animation:goalPulse 0.5s ease infinite alternate; }
+@keyframes goalPulse { from{transform:scale(1)} to{transform:scale(1.15)} }
 </style>
 </head>
 <body>
-
-<div id="start-screen">
-  <h1>OVERTIME</h1>
-  <div class="sub">3 v 3 HOCKEY</div>
-  <button id="play-btn">▶ PLAY</button>
-  <div class="controls-hint">
-    🎮 Mobile: Touch joystick + buttons<br>
-    ⌨️ Desktop: WASD / Arrows · Space = Shoot · E = Pass
-  </div>
-</div>
-
+<div id="startScreen"><h1>OVERTIME</h1><button onclick="startGame()">▶ PLAY</button></div>
 <canvas id="c"></canvas>
-
-<div id="ui-overlay">
-  <div id="hud" style="display:none;">
-    <div id="scoreboard">
-      <div class="team blue">🔵 <span id="score-blue">0</span></div>
-      <div class="period"><span id="period-display">P1</span> <span id="time-display">2:00</span></div>
-      <div class="team red"><span id="score-red">0</span> 🔴</div>
-    </div>
-  </div>
-  <div id="msg-overlay"></div>
+<div id="hud"><div class="score"><span id="sHome">0</span> - <span id="sAway">0</span></div><div class="period">P<span id="per">1</span> <span id="clock">2:00</span></div></div>
+<div id="controls">
+  <div id="joystickArea"><div id="joystickBase"><div id="joystickKnob"></div></div></div>
+  <div id="btnArea"><button id="btnShoot">SHOOT</button><button id="btnPass">PASS</button></div>
 </div>
-
-<div id="touch-controls">
-  <div id="joystick-area">
-    <div id="joystick-base"></div>
-    <div id="joystick-thumb"></div>
-  </div>
-  <div id="btn-shoot" class="touch-btn">SHOT</div>
-  <div id="btn-pass" class="touch-btn">PASS</div>
-</div>
-
-<div id="period-screen">
-  <h2 id="period-title"></h2>
-  <div class="score-display" id="period-score"></div>
-  <button id="period-btn">Continue</button>
-</div>
+<div id="goalOverlay"><div class="goalText">🚨 GOAL! 🚨</div></div>
 
 <script>
-// ===== GAME ENGINE =====
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-
-// --- Audio ---
-let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
-function playSound(freq,dur,type='square',vol=.15){
-  if(!audioCtx)return;
-  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.type=type;o.frequency.value=freq;
-  g.gain.setValueAtTime(vol,audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+dur);
-  o.connect(g);g.connect(audioCtx.destination);
-  o.start();o.stop(audioCtx.currentTime+dur);
-}
-function playGoalHorn(){
-  if(!audioCtx)return;
-  [200,250,300].forEach((f,i)=>{setTimeout(()=>playSound(f,.8,'sawtooth',.2),i*100);});
-  setTimeout(()=>{for(let i=0;i<5;i++)setTimeout(()=>playSound(800+Math.random()*400,.1,'square',.1),i*150);},900);
-}
-function playShot(){playSound(600,.08,'square',.12);}
-function playPass(){playSound(400,.06,'triangle',.1);}
-function playWhistle(){playSound(900,.4,'sine',.15);setTimeout(()=>playSound(700,.3,'sine',.1),200);}
-
-// --- Constants ---
-const RINK_W = 800, RINK_H = 1700; // world coords: full rink
-const GOAL_W = 120, GOAL_D = 40;
-const PERIOD_TIME = 120; // 2 min
-const MAX_PERIODS = 3;
-const FRICTION = 0.985;
-const ACCEL = 0.45;
-const MAX_SPEED = 4.5;
-const PUCK_FRICTION = 0.992;
-const SHOT_SPEED = 14;
-const PASS_SPEED = 8;
-const PLAYER_R = 15; // world radius
-
-// --- State ---
-let W, H; // canvas pixel size
-let gameState = 'menu'; // menu, playing, faceoff, goal, periodEnd, gameOver
-let score = [0, 0]; // blue, red
-let period = 1;
-let timeLeft = PERIOD_TIME;
-let lastTime = 0;
-let msgTimer = 0;
-let goalCelebTimer = 0;
-let faceoffTimer = 0;
-let particles = [];
-
-// --- Input ---
-let keys = {};
-let joystickVec = {x:0,y:0};
-let shootPressed = false, passPressed = false;
-let isMobile = false;
-
-// --- Entities ---
-let players = []; // index 0 = human player
-let puck = {x:0,y:0,vx:0,vy:0,carrier:null};
-let goalies = []; // 0=blue(bottom), 1=red(top)
+const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
+let W,H,rinkX,rinkY,rinkW,rinkH,scale;
 
 function resize(){
-  W = canvas.width = window.innerWidth * devicePixelRatio;
-  H = canvas.height = window.innerHeight * devicePixelRatio;
-  canvas.style.width = window.innerWidth+'px';
-  canvas.style.height = window.innerHeight+'px';
+  W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight;
+  const pad=40, aspect=200/85;
+  if((W-pad*2)/(H-pad*2-60)>aspect){ rinkH=H-pad*2-60; rinkW=rinkH*aspect; }
+  else { rinkW=W-pad*2; rinkH=rinkW/aspect; }
+  rinkX=(W-rinkW)/2; rinkY=(H-rinkH)/2+20;
+  scale=rinkW/200;
 }
-window.addEventListener('resize', resize);
-resize();
+window.addEventListener('resize',resize); resize();
 
-// --- Perspective projection ---
-// Camera behind player looking up-ice. World Y: 0=top(far goal), RINK_H=bottom(near goal).
-// Player's team attacks upward (toward Y=0).
-// We project world coords to screen coords with perspective.
+// Game state
+const PERIOD_TIME=120, CORNER_R=28;
+let gameState='menu', period=1, timeLeft=PERIOD_TIME, scoreHome=0, scoreAway=0;
+let goalTimer=0, faceoffTimer=0, particles=[];
+let lastTime=0;
 
-function worldToScreen(wx, wy){
-  // Normalize Y: 0(far)..1(near) relative to camera
-  // Camera follows player Y somewhat
-  const camY = players[0] ? players[0].y : RINK_H/2;
-  const viewRange = RINK_H * 0.85;
-  const viewTop = camY - viewRange * 0.7; // see more ahead
-  const viewBot = camY + viewRange * 0.3;
-  
-  let ny = (wy - viewTop) / (viewBot - viewTop); // 0=far, 1=near
-  ny = Math.max(0.01, Math.min(1.2, ny));
-  
-  // Perspective: near things wider, far things narrower
-  const perspective = 0.3 + 0.7 * ny; // scale factor
-  const vanishX = W / 2;
-  
-  // X: center on player somewhat
-  const camX = players[0] ? players[0].x : RINK_W/2;
-  const nx = (wx - camX) / RINK_W; // -0.5 to 0.5 centered on player
-  
-  const sx = vanishX + nx * W * 1.1 * perspective;
-  const sy = H * 0.08 + (1 - ny) * H * 0.85; // far=top, near=bottom (inverted because far at top of screen)
-  // Wait, let's reconsider: ny=0 is far (top of screen), ny=1 is near (bottom)
-  // So screen Y should be: small for far, large for near
-  const screenY = H * 0.05 + ny * H * 0.88;
-  
-  return {x: sx, y: screenY, scale: perspective};
-}
+// Rink coords (in rink-units, 200x85)
+const RW=200, RH=85, CX=100, CY=42.5;
 
-function getScale(wy){
-  const camY = players[0] ? players[0].y : RINK_H/2;
-  const viewRange = RINK_H * 0.85;
-  const viewTop = camY - viewRange * 0.7;
-  const viewBot = camY + viewRange * 0.3;
-  let ny = (wy - viewTop) / (viewBot - viewTop);
-  ny = Math.max(0.01, Math.min(1.2, ny));
-  return 0.3 + 0.7 * ny;
-}
+function rx(x){return rinkX+x*scale}
+function ry(y){return rinkY+y*scale}
+function rs(s){return s*scale}
 
-// --- Init game ---
-function initGame(){
-  score = [0,0];
-  period = 1;
-  timeLeft = PERIOD_TIME;
-  initPeriod();
-}
+// Players
+const PLAYER_R=3.5, PUCK_R=1.5, GOALIE_R=3;
+let players=[], puck={x:CX,y:CY,vx:0,vy:0}, controlledIdx=0;
 
-function initPeriod(){
-  players = [];
-  // Blue team (bottom, attacks up toward Y=0)
-  // Player 0 = human
-  players.push({x:RINK_W/2, y:RINK_H*0.65, vx:0, vy:0, team:0, isHuman:true, r:PLAYER_R});
-  players.push({x:RINK_W/2-120, y:RINK_H*0.55, vx:0, vy:0, team:0, isHuman:false, r:PLAYER_R});
-  players.push({x:RINK_W/2+120, y:RINK_H*0.55, vx:0, vy:0, team:0, isHuman:false, r:PLAYER_R});
-  // Red team (top, attacks down toward Y=RINK_H)
-  players.push({x:RINK_W/2, y:RINK_H*0.35, vx:0, vy:0, team:1, isHuman:false, r:PLAYER_R});
-  players.push({x:RINK_W/2-120, y:RINK_H*0.45, vx:0, vy:0, team:1, isHuman:false, r:PLAYER_R});
-  players.push({x:RINK_W/2+120, y:RINK_H*0.45, vx:0, vy:0, team:1, isHuman:false, r:PLAYER_R});
-  
-  // Goalies
-  goalies = [
-    {x:RINK_W/2, y:RINK_H-50, vx:0, team:0, r:18}, // blue goalie (bottom)
-    {x:RINK_W/2, y:50, vx:0, team:1, r:18}           // red goalie (top)
+function createTeam(home){
+  const dir=home?1:-1, cx=home?55:145, gx=home?5:195;
+  return [
+    {x:gx, y:CY, vx:0, vy:0, home, goalie:true, baseX:gx, baseY:CY},
+    {x:cx, y:CY, vx:0, vy:0, home, goalie:false, baseX:cx, baseY:CY, role:'center'},
+    {x:cx-dir*15, y:CY-18, vx:0, vy:0, home, goalie:false, baseX:cx-dir*15, baseY:CY-18, role:'wing'},
+    {x:cx-dir*15, y:CY+18, vx:0, vy:0, home, goalie:false, baseX:cx-dir*15, baseY:CY+18, role:'wing'},
+    {x:cx-dir*30, y:CY-14, vx:0, vy:0, home, goalie:false, baseX:cx-dir*30, baseY:CY-14, role:'def'},
+    {x:cx-dir*30, y:CY+14, vx:0, vy:0, home, goalie:false, baseX:cx-dir*30, baseY:CY+14, role:'def'},
   ];
-  
-  resetForFaceoff();
 }
 
-function resetForFaceoff(){
-  // Center faceoff
-  puck.x = RINK_W/2; puck.y = RINK_H/2;
-  puck.vx = 0; puck.vy = 0; puck.carrier = null;
-  
-  // Position players for faceoff
-  players[0].x = RINK_W/2; players[0].y = RINK_H/2 + 40;
-  players[1].x = RINK_W/2 - 100; players[1].y = RINK_H/2 + 80;
-  players[2].x = RINK_W/2 + 100; players[2].y = RINK_H/2 + 80;
-  players[3].x = RINK_W/2; players[3].y = RINK_H/2 - 40;
-  players[4].x = RINK_W/2 - 100; players[4].y = RINK_H/2 - 80;
-  players[5].x = RINK_W/2 + 100; players[5].y = RINK_H/2 - 80;
-  
-  players.forEach(p => {p.vx=0;p.vy=0;});
-  goalies[0].x = RINK_W/2; goalies[1].x = RINK_W/2;
-  
-  faceoffTimer = 1.5;
-  gameState = 'faceoff';
+function resetPositions(){
+  const home=createTeam(true), away=createTeam(false);
+  players=[...home,...away];
+  controlledIdx=1; // center of home team
+  puck.x=CX; puck.y=CY; puck.vx=0; puck.vy=0;
+  puck.owner=null;
+  faceoffTimer=1.5;
 }
 
-// --- Update ---
-function update(dt){
-  if(gameState === 'faceoff'){
-    faceoffTimer -= dt;
-    if(faceoffTimer <= 0) gameState = 'playing';
-    return;
-  }
-  if(gameState === 'goal'){
-    goalCelebTimer -= dt;
-    updateParticles(dt);
-    if(goalCelebTimer <= 0){
-      resetForFaceoff();
-    }
-    return;
-  }
-  if(gameState === 'periodEnd' || gameState === 'gameOver' || gameState === 'menu') return;
-  
-  // Timer
-  timeLeft -= dt;
-  if(timeLeft <= 0){
-    timeLeft = 0;
-    endPeriod();
-    return;
-  }
-  
-  // Player input
-  let ix = 0, iy = 0;
-  if(isMobile){
-    ix = joystickVec.x; iy = joystickVec.y;
-  } else {
-    if(keys['ArrowLeft']||keys['KeyA']) ix = -1;
-    if(keys['ArrowRight']||keys['KeyD']) ix = 1;
-    if(keys['ArrowUp']||keys['KeyW']) iy = -1;
-    if(keys['ArrowDown']||keys['KeyS']) iy = 1;
-    const mag = Math.sqrt(ix*ix+iy*iy);
-    if(mag>1){ix/=mag;iy/=mag;}
-  }
-  
-  const p = players[0];
-  p.vx += ix * ACCEL;
-  p.vy += iy * ACCEL;
-  
-  // Shoot
-  if(shootPressed || keys['Space']){
-    if(puck.carrier === p){
-      puck.carrier = null;
-      puck.vx = 0;
-      puck.vy = -SHOT_SPEED; // shoot toward far goal
-      playShot();
-    }
-    shootPressed = false;
-    keys['Space'] = false;
-  }
-  
-  // Pass
-  if(passPressed || keys['KeyE']){
-    if(puck.carrier === p){
-      // Find nearest teammate
-      let best = null, bestD = Infinity;
-      players.forEach(t => {
-        if(t === p || t.team !== p.team) return;
-        const d = dist(p,t);
-        if(d < bestD){bestD=d;best=t;}
-      });
-      if(best){
-        puck.carrier = null;
-        const a = Math.atan2(best.y-p.y, best.x-p.x);
-        puck.vx = Math.cos(a)*PASS_SPEED;
-        puck.vy = Math.sin(a)*PASS_SPEED;
-        playPass();
-      }
-    }
-    passPressed = false;
-    keys['KeyE'] = false;
-  }
-  
-  // Update all players
-  players.forEach(pl => {
-    if(!pl.isHuman) updateAI(pl, dt);
-    pl.vx *= FRICTION;
-    pl.vy *= FRICTION;
-    const spd = Math.sqrt(pl.vx*pl.vx+pl.vy*pl.vy);
-    if(spd > MAX_SPEED){pl.vx*=MAX_SPEED/spd;pl.vy*=MAX_SPEED/spd;}
-    pl.x += pl.vx;
-    pl.y += pl.vy;
-    // Clamp to rink
-    pl.x = Math.max(30, Math.min(RINK_W-30, pl.x));
-    pl.y = Math.max(30, Math.min(RINK_H-30, pl.y));
-  });
-  
-  // Update goalies
-  goalies.forEach((g,i) => {
-    const goalY = i===0 ? RINK_H-50 : 50;
-    const targetX = Math.max(RINK_W/2-GOAL_W/2+20, Math.min(RINK_W/2+GOAL_W/2-20, puck.x));
-    g.x += (targetX - g.x) * 0.06;
-    g.y = goalY;
-  });
-  
-  // Update puck
-  if(puck.carrier){
-    // Puck follows carrier, slightly ahead
-    const c = puck.carrier;
-    const dir = Math.atan2(c.vy, c.vx);
-    puck.x = c.x + Math.cos(dir)*20;
-    puck.y = c.y + Math.sin(dir)*20;
-    if(Math.abs(c.vx)<0.1 && Math.abs(c.vy)<0.1){
-      puck.x = c.x; puck.y = c.y - 15;
-    }
-  } else {
-    puck.vx *= PUCK_FRICTION;
-    puck.vy *= PUCK_FRICTION;
-    puck.x += puck.vx;
-    puck.y += puck.vy;
-    
-    // Bounce off walls
-    if(puck.x < 15 || puck.x > RINK_W-15){puck.vx *= -0.7; puck.x = Math.max(15,Math.min(RINK_W-15,puck.x));}
-    
-    // Check goal or bounce off end boards
-    // Top goal (red team's goal, blue scores): Y < 20, within goal width
-    if(puck.y < 20){
-      if(Math.abs(puck.x - RINK_W/2) < GOAL_W/2){
-        // Check if goalie blocks
-        if(Math.abs(puck.x - goalies[1].x) < goalies[1].r + 8){
-          puck.vy *= -0.5; puck.y = 25;
-        } else {
-          goalScored(0); return; // Blue scores!
-        }
-      } else {
-        puck.vy *= -0.7; puck.y = 20;
-      }
-    }
-    // Bottom goal (blue team's goal, red scores): Y > RINK_H-20
-    if(puck.y > RINK_H-20){
-      if(Math.abs(puck.x - RINK_W/2) < GOAL_W/2){
-        if(Math.abs(puck.x - goalies[0].x) < goalies[0].r + 8){
-          puck.vy *= -0.5; puck.y = RINK_H-25;
-        } else {
-          goalScored(1); return; // Red scores!
-        }
-      } else {
-        puck.vy *= -0.7; puck.y = RINK_H-20;
-      }
-    }
-    
-    // Pickup: any player near puck can grab it
-    let allEntities = [...players, ...goalies];
-    allEntities.forEach(pl => {
-      if(puck.carrier) return;
-      if(dist(pl, puck) < (pl.r || PLAYER_R) + 10){
-        puck.carrier = pl;
-      }
-    });
-  }
-  
-  // Player-player collision
-  for(let i=0;i<players.length;i++){
-    for(let j=i+1;j<players.length;j++){
-      const a=players[i],b=players[j];
-      const d=dist(a,b);
-      if(d < a.r+b.r){
-        const nx=(b.x-a.x)/d, ny=(b.y-a.y)/d;
-        const overlap = (a.r+b.r-d)/2;
-        a.x -= nx*overlap; a.y -= ny*overlap;
-        b.x += nx*overlap; b.y += ny*overlap;
-        // Swap velocities partially
-        const dvx = a.vx-b.vx, dvy = a.vy-b.vy;
-        a.vx -= dvx*0.3; a.vy -= dvy*0.3;
-        b.vx += dvx*0.3; b.vy += dvy*0.3;
-        // Puck knock-loose
-        if(puck.carrier === a || puck.carrier === b){
-          puck.carrier = null;
-          puck.vx = (Math.random()-0.5)*3;
-          puck.vy = (Math.random()-0.5)*3;
-        }
-      }
-    }
-  }
-  
-  updateParticles(dt);
+// Input
+let inputDir={x:0,y:0}, shootPressed=false, passPressed=false;
+let keys={};
+document.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true; if(e.code==='Space'){shootPressed=true;e.preventDefault()} if(e.key.toLowerCase()==='e')passPressed=true;});
+document.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+
+// Joystick
+let joystickActive=false, joystickId=null;
+const jBase=document.getElementById('joystickBase'), jKnob=document.getElementById('joystickKnob');
+function handleJoystick(cx,cy,rect){
+  const dx=cx-rect.left-70, dy=cy-rect.top-70, dist=Math.sqrt(dx*dx+dy*dy);
+  const maxR=50, clamp=Math.min(dist,maxR);
+  const nx=dist>0?dx/dist:0, ny=dist>0?dy/dist:0;
+  jKnob.style.left=(42+nx*clamp)+'px'; jKnob.style.top=(42+ny*clamp)+'px';
+  inputDir.x=nx*(clamp/maxR); inputDir.y=ny*(clamp/maxR);
+}
+jBase.addEventListener('touchstart',e=>{e.preventDefault();joystickActive=true;joystickId=e.changedTouches[0].identifier;handleJoystick(e.changedTouches[0].clientX,e.changedTouches[0].clientY,jBase.getBoundingClientRect());},{passive:false});
+jBase.addEventListener('touchmove',e=>{e.preventDefault();for(let t of e.changedTouches)if(t.identifier===joystickId)handleJoystick(t.clientX,t.clientY,jBase.getBoundingClientRect());},{passive:false});
+function resetJoystick(){joystickActive=false;joystickId=null;jKnob.style.left='42px';jKnob.style.top='42px';inputDir.x=0;inputDir.y=0;}
+jBase.addEventListener('touchend',e=>{for(let t of e.changedTouches)if(t.identifier===joystickId)resetJoystick();});
+jBase.addEventListener('touchcancel',resetJoystick);
+
+document.getElementById('btnShoot').addEventListener('touchstart',e=>{e.preventDefault();shootPressed=true;},{passive:false});
+document.getElementById('btnPass').addEventListener('touchstart',e=>{e.preventDefault();passPressed=true;},{passive:false});
+
+// Audio
+const audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+function playHorn(){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='sawtooth';o.frequency.value=220;g.gain.setValueAtTime(0.3,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+1.5);
+  o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+1.5);
+}
+function playWhistle(){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='sine';o.frequency.value=800;g.gain.setValueAtTime(0.15,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.4);
+  o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+0.4);
 }
 
-function dist(a,b){return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);}
-
-function updateAI(pl, dt){
-  const hasPuck = puck.carrier === pl;
-  const teamAttackDir = pl.team === 0 ? -1 : 1; // blue attacks up (neg Y), red attacks down (pos Y)
-  const goalY = pl.team === 0 ? 0 : RINK_H;
-  
-  if(hasPuck){
-    // Move toward opponent goal
-    const tx = RINK_W/2 + (Math.random()-0.5)*100;
-    const ty = goalY;
-    const a = Math.atan2(ty-pl.y, tx-pl.x);
-    pl.vx += Math.cos(a)*ACCEL*0.6;
-    pl.vy += Math.sin(a)*ACCEL*0.6;
-    // Shoot if close to goal
-    if(Math.abs(pl.y - goalY) < 400){
-      puck.carrier = null;
-      puck.vx = (Math.random()-0.5)*2;
-      puck.vy = teamAttackDir * SHOT_SPEED * 0.8;
-      playShot();
-    }
-  } else if(puck.carrier && puck.carrier.team !== pl.team){
-    // Chase puck carrier
-    const a = Math.atan2(puck.carrier.y-pl.y, puck.carrier.x-pl.x);
-    pl.vx += Math.cos(a)*ACCEL*0.45;
-    pl.vy += Math.sin(a)*ACCEL*0.45;
-  } else if(!puck.carrier){
-    // Go for loose puck
-    const a = Math.atan2(puck.y-pl.y, puck.x-pl.x);
-    pl.vx += Math.cos(a)*ACCEL*0.4;
-    pl.vy += Math.sin(a)*ACCEL*0.4;
-  } else {
-    // Teammate has puck — get open
-    const homeY = pl.team === 0 ? RINK_H*0.5 : RINK_H*0.5;
-    const laneX = pl.x < RINK_W/2 ? RINK_W*0.25 : RINK_W*0.75;
-    const targetY = goalY === 0 ? Math.max(100, puck.carrier.y - 200) : Math.min(RINK_H-100, puck.carrier.y + 200);
-    const a = Math.atan2(targetY-pl.y, laneX-pl.x);
-    pl.vx += Math.cos(a)*ACCEL*0.3;
-    pl.vy += Math.sin(a)*ACCEL*0.3;
-  }
-}
-
-function goalScored(team){
-  score[team]++;
-  gameState = 'goal';
-  goalCelebTimer = 2.5;
-  playGoalHorn();
-  showMsg(team===0?'🔵 GOAL!':'🔴 GOAL!');
-  // Particles
-  const gx = RINK_W/2, gy = team===0 ? 30 : RINK_H-30;
+// Particles
+function spawnGoalParticles(x,y){
   for(let i=0;i<40;i++){
-    particles.push({
-      x:gx, y:gy,
-      vx:(Math.random()-0.5)*8, vy:(Math.random()-0.5)*8,
-      life:1+Math.random(), color: team===0?'#4af':'#f44', r:3+Math.random()*4
-    });
+    const a=Math.random()*Math.PI*2, sp=Math.random()*60+20;
+    particles.push({x:rx(x),y:ry(y),vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.5,
+      color:['#f44','#ff0','#fff','#f80'][Math.floor(Math.random()*4)]});
   }
-  updateHUD();
+}
+
+function startGame(){
+  document.getElementById('startScreen').style.display='none';
+  document.getElementById('hud').style.display='block';
+  document.getElementById('controls').style.display='block';
+  scoreHome=0; scoreAway=0; period=1; timeLeft=PERIOD_TIME;
+  resetPositions();
+  gameState='playing';
+  audioCtx.resume();
+}
+
+function goalScored(byHome){
+  if(byHome)scoreHome++; else scoreAway++;
+  document.getElementById('sHome').textContent=scoreHome;
+  document.getElementById('sAway').textContent=scoreAway;
+  playHorn();
+  spawnGoalParticles(puck.x,puck.y);
+  const ov=document.getElementById('goalOverlay');ov.style.display='flex';
+  goalTimer=2.5;
+  gameState='goal';
 }
 
 function endPeriod(){
   playWhistle();
-  if(period >= MAX_PERIODS){
-    if(score[0] === score[1]){
-      // Overtime!
-      period++;
-      showPeriodScreen('OVERTIME','Sudden Death!');
-    } else {
-      gameState = 'gameOver';
-      showPeriodScreen('GAME OVER', score[0]>score[1]?'🔵 Blue Wins!':'🔴 Red Wins!');
-    }
+  if(period<3||(period===3&&scoreHome===scoreAway)){
+    if(period<3)period++; else period=4; // OT
+    timeLeft=PERIOD_TIME;
+    resetPositions();
+    document.getElementById('per').textContent=period===4?'OT':period;
+    faceoffTimer=2;
   } else {
-    showPeriodScreen(`End of Period ${period}`, '');
-    period++;
+    gameState='gameover';
   }
 }
 
-function showPeriodScreen(title, sub){
-  gameState = 'periodEnd';
-  const el = document.getElementById('period-screen');
-  document.getElementById('period-title').textContent = title;
-  document.getElementById('period-score').textContent = `${score[0]} — ${score[1]}` + (sub ? '\n'+sub : '');
-  el.style.display = 'flex';
-  const btn = document.getElementById('period-btn');
-  btn.textContent = gameState==='gameOver'?'Play Again':'Continue';
-  btn.onclick = ()=>{
-    el.style.display='none';
-    if(title==='GAME OVER'){
-      initGame();
-    } else {
-      timeLeft = PERIOD_TIME;
-      initPeriod();
+// Distance
+function dist(a,b){return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2)}
+
+// Clamp to rink with rounded corners
+function clampToRink(obj,r){
+  const pr=r||0;
+  obj.x=Math.max(pr+1,Math.min(RW-pr-1,obj.x));
+  obj.y=Math.max(pr+1,Math.min(RH-pr-1,obj.y));
+  // rounded corners
+  const cr=CORNER_R;
+  const corners=[[cr,cr],[RW-cr,cr],[cr,RH-cr],[RW-cr,RH-cr]];
+  for(const [cx,cy] of corners){
+    const dx=obj.x-cx, dy=obj.y-cy;
+    const inCorner=(obj.x<cr&&obj.y<cr)||(obj.x>RW-cr&&obj.y<cr)||(obj.x<cr&&obj.y>RH-cr)||(obj.x>RW-cr&&obj.y>RH-cr);
+    if(inCorner){
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d>cr-pr){
+        const nx=dx/d,ny=dy/d;
+        obj.x=cx+nx*(cr-pr); obj.y=cy+ny*(cr-pr);
+      }
     }
-  };
+  }
 }
 
-function showMsg(txt){
-  const el = document.getElementById('msg-overlay');
-  el.textContent = txt;
-  el.style.opacity = '1';
-  msgTimer = 2;
+function puckInGoal(){
+  // Goals at x=0 and x=200, y between ~37 and ~48 (net width ~11)
+  const netHalf=5.5;
+  if(puck.x<=1.5 && Math.abs(puck.y-CY)<netHalf) return 'away'; // away scores (shooting left)
+  if(puck.x>=RW-1.5 && Math.abs(puck.y-CY)<netHalf) return 'home'; // home scores
+  return null;
 }
 
-function updateHUD(){
-  document.getElementById('score-blue').textContent = score[0];
-  document.getElementById('score-red').textContent = score[1];
-  const m = Math.floor(timeLeft/60), s = Math.floor(timeLeft%60);
-  document.getElementById('time-display').textContent = `${m}:${s.toString().padStart(2,'0')}`;
-  document.getElementById('period-display').textContent = period > MAX_PERIODS ? 'OT' : `P${period}`;
+// AI
+function aiUpdate(idx,dt){
+  const p=players[idx]; if(!p)return;
+  const isHome=p.home;
+  const attackDir=isHome?1:-1;
+  const hasPuck=puck.owner===idx;
+  const teamHasPuck=puck.owner!==null&&players[puck.owner].home===isHome;
+  
+  let tx=p.baseX, ty=p.baseY, speed=38;
+  
+  if(p.goalie){
+    // Goalie AI: track puck y, stay near goal
+    const gx=p.baseX;
+    const targetY=CY+(puck.y-CY)*0.6;
+    tx=gx+(puck.x-gx)*0.08;
+    ty=Math.max(CY-8,Math.min(CY+8,targetY));
+    tx=isHome?Math.max(2,Math.min(12,tx)):Math.max(RW-12,Math.min(RW-2,tx));
+    speed=30;
+    // If puck very close, try to block
+    if(dist(p,puck)<8&&puck.owner===null){
+      puck.vx*=-0.5; puck.vy*=0.3;
+      puck.owner=idx;
+    }
+  } else if(hasPuck){
+    // Skate toward opponent goal and shoot
+    tx=isHome?RW-20:20; ty=CY+(p.y>CY?-10:10);
+    speed=42;
+    const goalX=isHome?RW:0;
+    if(Math.abs(p.x-goalX)<45){
+      // Shoot!
+      const ang=Math.atan2(CY-p.y,goalX-p.x)+(Math.random()-0.5)*0.3;
+      puck.vx=Math.cos(ang)*90; puck.vy=Math.sin(ang)*90;
+      puck.owner=null;
+    }
+  } else if(teamHasPuck){
+    // Support: move toward attacking zone
+    tx=p.baseX+attackDir*15; ty=p.baseY;
+    speed=35;
+  } else {
+    // Chase puck if close, else go to base
+    if(dist(p,puck)<30&&puck.owner===null){
+      tx=puck.x; ty=puck.y; speed=40;
+      if(dist(p,puck)<PLAYER_R+PUCK_R+1&&puck.owner===null){
+        puck.owner=idx;
+      }
+    } else if(puck.owner!==null&&!players[puck.owner].home===isHome){
+      // Defend: move toward puck carrier
+      const carrier=players[puck.owner];
+      tx=carrier.x-attackDir*5; ty=carrier.y;
+      speed=36;
+      // Check/steal
+      if(dist(p,carrier)<PLAYER_R*2+1){
+        if(Math.random()<0.03){
+          puck.owner=null;
+          puck.vx=(Math.random()-0.5)*20; puck.vy=(Math.random()-0.5)*20;
+        }
+      }
+    }
+  }
+  
+  const dx=tx-p.x, dy=ty-p.y, d=Math.sqrt(dx*dx+dy*dy);
+  if(d>0.5){
+    p.vx+=(dx/d)*speed*dt*3; p.vy+=(dy/d)*speed*dt*3;
+  }
 }
 
-function updateParticles(dt){
-  particles = particles.filter(p => {
-    p.x += p.vx; p.y += p.vy;
-    p.life -= dt;
-    p.vx *= 0.97; p.vy *= 0.97;
-    return p.life > 0;
-  });
-}
-
-// ===== DRAW =====
-function draw(){
-  ctx.fillStyle = '#111';
-  ctx.fillRect(0, 0, W, H);
+function update(dt){
+  if(gameState!=='playing') return;
+  if(faceoffTimer>0){faceoffTimer-=dt;return;}
   
-  drawRink();
+  // Time
+  timeLeft-=dt;
+  if(timeLeft<=0){timeLeft=0; endPeriod(); return;}
+  const mins=Math.floor(timeLeft/60), secs=Math.floor(timeLeft%60);
+  document.getElementById('clock').textContent=mins+':'+(secs<10?'0':'')+secs;
   
-  // Collect all drawable entities, sort by Y (far first)
-  let drawables = [];
-  players.forEach(p => drawables.push({type:'player', e:p}));
-  goalies.forEach(g => drawables.push({type:'goalie', e:g}));
-  if(!puck.carrier) drawables.push({type:'puck', e:puck});
+  // Keyboard input
+  if(!joystickActive){
+    inputDir.x=0; inputDir.y=0;
+    if(keys['a']||keys['arrowleft'])inputDir.x=-1;
+    if(keys['d']||keys['arrowright'])inputDir.x=1;
+    if(keys['w']||keys['arrowup'])inputDir.y=-1;
+    if(keys['s']||keys['arrowdown'])inputDir.y=1;
+    const m=Math.sqrt(inputDir.x**2+inputDir.y**2);
+    if(m>1){inputDir.x/=m;inputDir.y/=m;}
+  }
   
-  drawables.sort((a,b) => a.e.y - b.e.y); // far (small Y) first
+  // Controlled player movement
+  const cp=players[controlledIdx];
+  const SPEED=50;
+  cp.vx+=inputDir.x*SPEED*dt*3;
+  cp.vy+=inputDir.y*SPEED*dt*3;
   
-  drawables.forEach(d => {
-    if(d.type==='puck') drawPuck(d.e);
-    else if(d.type==='goalie') drawGoalie(d.e);
-    else drawPlayer(d.e);
-  });
+  // Pick up puck
+  if(puck.owner===null && dist(cp,puck)<PLAYER_R+PUCK_R+1.5){
+    puck.owner=controlledIdx;
+  }
   
-  // Draw puck on carrier
-  if(puck.carrier) drawPuck(puck);
+  // Shoot
+  if(shootPressed){
+    shootPressed=false;
+    if(puck.owner===controlledIdx){
+      const ang=Math.atan2(CY-cp.y, RW-cp.x);
+      puck.vx=Math.cos(ang)*100; puck.vy=Math.sin(ang)*100;
+      puck.owner=null;
+    }
+  }
+  
+  // Pass
+  if(passPressed){
+    passPressed=false;
+    if(puck.owner===controlledIdx){
+      // Find nearest teammate
+      let best=null, bestD=999;
+      for(let i=0;i<players.length;i++){
+        if(i!==controlledIdx && players[i].home===cp.home && !players[i].goalie){
+          const d=dist(cp,players[i]);
+          if(d<bestD){bestD=d;best=i;}
+        }
+      }
+      if(best!==null){
+        const t=players[best];
+        const ang=Math.atan2(t.y-cp.y,t.x-cp.x);
+        puck.vx=Math.cos(ang)*65; puck.vy=Math.sin(ang)*65;
+        puck.owner=null;
+      }
+    }
+  }
+  
+  // AI
+  for(let i=0;i<players.length;i++){
+    if(i===controlledIdx)continue;
+    aiUpdate(i,dt);
+  }
+  
+  // Physics for all players
+  const FRICTION=0.92;
+  for(const p of players){
+    p.x+=p.vx*dt; p.y+=p.vy*dt;
+    p.vx*=FRICTION; p.vy*=FRICTION;
+    clampToRink(p, PLAYER_R);
+  }
+  
+  // Puck physics
+  if(puck.owner!==null){
+    const o=players[puck.owner];
+    const ahead=o.goalie?0:3;
+    const ang=Math.atan2(o.vy,o.vx);
+    puck.x=o.x+(Math.abs(o.vx)>0.5?Math.cos(ang)*ahead:0);
+    puck.y=o.y+(Math.abs(o.vy)>0.5?Math.sin(ang)*ahead:0);
+    puck.vx=0; puck.vy=0;
+  } else {
+    puck.x+=puck.vx*dt; puck.y+=puck.vy*dt;
+    puck.vx*=0.985; puck.vy*=0.985;
+    // Bounce off top/bottom
+    if(puck.y<PUCK_R){puck.y=PUCK_R;puck.vy*=-0.7;}
+    if(puck.y>RH-PUCK_R){puck.y=RH-PUCK_R;puck.vy*=-0.7;}
+    // Bounce off left/right (but not in goal)
+    if(puck.x<PUCK_R&&(puck.y<CY-5.5||puck.y>CY+5.5)){puck.x=PUCK_R;puck.vx*=-0.7;}
+    if(puck.x>RW-PUCK_R&&(puck.y<CY-5.5||puck.y>CY+5.5)){puck.x=RW-PUCK_R;puck.vx*=-0.7;}
+    clampToRink(puck,PUCK_R);
+    
+    // AI pickup
+    for(let i=0;i<players.length;i++){
+      if(i===controlledIdx)continue;
+      if(dist(players[i],puck)<PLAYER_R+PUCK_R+1){
+        puck.owner=i; break;
+      }
+    }
+  }
+  
+  // Goal check
+  const g=puckInGoal();
+  if(g){
+    goalScored(g==='home');
+  }
+  
+  // Switch controlled player to nearest to puck when team doesn't have it
+  if(puck.owner===null || !players[puck.owner].home){
+    let best=null, bestD=999;
+    for(let i=0;i<6;i++){
+      if(players[i].goalie)continue;
+      const d=dist(players[i],puck);
+      if(d<bestD){bestD=d;best=i;}
+    }
+    if(best!==null && best!==controlledIdx && bestD<dist(players[controlledIdx],puck)-5){
+      controlledIdx=best;
+    }
+  }
   
   // Particles
-  particles.forEach(p => {
-    const s = worldToScreen(p.x, p.y);
-    ctx.globalAlpha = Math.min(1, p.life);
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, p.r * s.scale, 0, Math.PI*2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-  });
-  
-  // Goal flash
-  if(gameState==='goal' && goalCelebTimer > 1.5){
-    ctx.fillStyle = `rgba(255,255,255,${(goalCelebTimer-1.5)/1.0*0.3})`;
-    ctx.fillRect(0,0,W,H);
-  }
-  
-  // Faceoff indicator
-  if(gameState==='faceoff'){
-    const s = worldToScreen(RINK_W/2, RINK_H/2);
-    ctx.fillStyle = '#fff';
-    ctx.font = `bold ${30*devicePixelRatio}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText(faceoffTimer > 1 ? 'READY' : 'GO!', s.x, s.y - 40*s.scale);
-  }
-  
-  // Msg fade
-  if(msgTimer > 0){
-    msgTimer -= 1/60;
-    if(msgTimer <= 0){
-      document.getElementById('msg-overlay').style.opacity = '0';
-    }
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=80*dt; p.life-=dt;
+    if(p.life<=0)particles.splice(i,1);
   }
 }
 
 function drawRink(){
-  // Draw ice surface as perspective trapezoid
-  const corners = [
-    worldToScreen(0, 0),         // far-left
-    worldToScreen(RINK_W, 0),    // far-right
-    worldToScreen(RINK_W, RINK_H), // near-right
-    worldToScreen(0, RINK_H)     // near-left
-  ];
+  // Boards background
+  ctx.fillStyle='#1a2a3a';
+  const bx=rinkX-4, by=rinkY-4, bw=rinkW+8, bh=rinkH+8, br=rs(CORNER_R)+4;
+  ctx.beginPath();
+  ctx.moveTo(bx+br,by); ctx.lineTo(bx+bw-br,by); ctx.arcTo(bx+bw,by,bx+bw,by+br,br);
+  ctx.lineTo(bx+bw,by+bh-br); ctx.arcTo(bx+bw,by+bh,bx+bw-br,by+bh,br);
+  ctx.lineTo(bx+br,by+bh); ctx.arcTo(bx,by+bh,bx,by+bh-br,br);
+  ctx.lineTo(bx,by+br); ctx.arcTo(bx,by,bx+br,by,br);
+  ctx.fill();
   
   // Ice
-  ctx.fillStyle = '#dce8f0';
+  ctx.fillStyle='#e8f0f8';
+  const cr=rs(CORNER_R);
   ctx.beginPath();
-  ctx.moveTo(corners[0].x, corners[0].y);
-  ctx.lineTo(corners[1].x, corners[1].y);
-  ctx.lineTo(corners[2].x, corners[2].y);
-  ctx.lineTo(corners[3].x, corners[3].y);
-  ctx.closePath();
+  ctx.moveTo(rinkX+cr,rinkY); ctx.lineTo(rinkX+rinkW-cr,rinkY); ctx.arcTo(rinkX+rinkW,rinkY,rinkX+rinkW,rinkY+cr,cr);
+  ctx.lineTo(rinkX+rinkW,rinkY+rinkH-cr); ctx.arcTo(rinkX+rinkW,rinkY+rinkH,rinkX+rinkW-cr,rinkY+rinkH,cr);
+  ctx.lineTo(rinkX+cr,rinkY+rinkH); ctx.arcTo(rinkX,rinkY+rinkH,rinkX,rinkY+rinkH-cr,cr);
+  ctx.lineTo(rinkX,rinkY+cr); ctx.arcTo(rinkX,rinkY,rinkX+cr,rinkY,cr);
   ctx.fill();
   
-  // Rink border
-  ctx.strokeStyle = '#345';
-  ctx.lineWidth = 3 * devicePixelRatio;
-  ctx.stroke();
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(rinkX+cr,rinkY); ctx.lineTo(rinkX+rinkW-cr,rinkY); ctx.arcTo(rinkX+rinkW,rinkY,rinkX+rinkW,rinkY+cr,cr);
+  ctx.lineTo(rinkX+rinkW,rinkY+rinkH-cr); ctx.arcTo(rinkX+rinkW,rinkY+rinkH,rinkX+rinkW-cr,rinkY+rinkH,cr);
+  ctx.lineTo(rinkX+cr,rinkY+rinkH); ctx.arcTo(rinkX,rinkY+rinkH,rinkX,rinkY+rinkH-cr,cr);
+  ctx.lineTo(rinkX,rinkY+cr); ctx.arcTo(rinkX,rinkY,rinkX+cr,rinkY,cr);
+  ctx.clip();
   
-  // Lines
-  drawRinkLine(RINK_H/2, '#44f', 2);   // center red... wait, blue line? Let's do it right
-  drawRinkLine(RINK_H/2, '#c22', 3);    // center line (red)
-  drawRinkLine(RINK_H*0.3, '#44f', 2);  // blue line (far)
-  drawRinkLine(RINK_H*0.7, '#44f', 2);  // blue line (near)
+  // Red center line
+  ctx.strokeStyle='#cc0000'; ctx.lineWidth=rs(0.8);
+  ctx.beginPath(); ctx.moveTo(rx(CX),rinkY); ctx.lineTo(rx(CX),rinkY+rinkH); ctx.stroke();
+  
+  // Blue lines
+  ctx.strokeStyle='#0044aa'; ctx.lineWidth=rs(1.2);
+  ctx.beginPath(); ctx.moveTo(rx(75),rinkY); ctx.lineTo(rx(75),rinkY+rinkH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(rx(125),rinkY); ctx.lineTo(rx(125),rinkY+rinkH); ctx.stroke();
+  
+  // Red goal lines
+  ctx.strokeStyle='#cc0000'; ctx.lineWidth=rs(0.5);
+  ctx.beginPath(); ctx.moveTo(rx(11),rinkY); ctx.lineTo(rx(11),rinkY+rinkH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(rx(189),rinkY); ctx.lineTo(rx(189),rinkY+rinkH); ctx.stroke();
   
   // Center circle
-  drawCircleOnIce(RINK_W/2, RINK_H/2, 80, '#c22', 2);
+  ctx.strokeStyle='#cc0000'; ctx.lineWidth=rs(0.5);
+  ctx.beginPath(); ctx.arc(rx(CX),ry(CY),rs(15),0,Math.PI*2); ctx.stroke();
+  // Center dot
+  ctx.fillStyle='#cc0000';
+  ctx.beginPath(); ctx.arc(rx(CX),ry(CY),rs(1),0,Math.PI*2); ctx.fill();
   
-  // Faceoff circles
-  [RINK_H*0.2, RINK_H*0.8].forEach(fy => {
-    [RINK_W*0.25, RINK_W*0.75].forEach(fx => {
-      drawCircleOnIce(fx, fy, 50, '#c22', 1.5);
-    });
-  });
+  // End zone faceoff circles and dots
+  const faceoffSpots=[
+    [20,CY-22],[20,CY+22],[180,CY-22],[180,CY+22], // end zone (with circles)
+    [80,CY-22],[80,CY+22],[120,CY-22],[120,CY+22], // neutral zone (dots only)
+  ];
+  for(let i=0;i<4;i++){
+    const [fx,fy]=faceoffSpots[i];
+    ctx.strokeStyle='#cc0000'; ctx.lineWidth=rs(0.5);
+    ctx.beginPath(); ctx.arc(rx(fx),ry(fy),rs(15),0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle='#cc0000';
+    ctx.beginPath(); ctx.arc(rx(fx),ry(fy),rs(1),0,Math.PI*2); ctx.fill();
+  }
+  for(let i=4;i<8;i++){
+    const [fx,fy]=faceoffSpots[i];
+    ctx.fillStyle='#cc0000';
+    ctx.beginPath(); ctx.arc(rx(fx),ry(fy),rs(1),0,Math.PI*2); ctx.fill();
+  }
   
-  // Goal creases
-  drawCrease(RINK_W/2, 30, '#adf');   // top
-  drawCrease(RINK_W/2, RINK_H-30, '#adf'); // bottom
+  // Goal creases (blue)
+  ctx.fillStyle='rgba(60,120,220,0.3)'; ctx.strokeStyle='#cc0000'; ctx.lineWidth=rs(0.4);
+  // Left crease
+  ctx.beginPath(); ctx.arc(rx(11),ry(CY),rs(6),Math.PI*1.5,Math.PI*0.5); ctx.lineTo(rx(11),ry(CY+6)); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Right crease
+  ctx.beginPath(); ctx.arc(rx(189),ry(CY),rs(6),Math.PI*0.5,Math.PI*1.5); ctx.lineTo(rx(189),ry(CY-6)); ctx.closePath(); ctx.fill(); ctx.stroke();
   
   // Nets
-  drawNet(RINK_W/2, 10);
-  drawNet(RINK_W/2, RINK_H-10);
+  ctx.fillStyle='rgba(200,200,200,0.5)'; ctx.strokeStyle='#888'; ctx.lineWidth=2;
+  ctx.fillRect(rx(-3),ry(CY-5.5),rs(4),rs(11)); ctx.strokeRect(rx(-3),ry(CY-5.5),rs(4),rs(11));
+  ctx.fillRect(rx(199),ry(CY-5.5),rs(4),rs(11)); ctx.strokeRect(rx(199),ry(CY-5.5),rs(4),rs(11));
+  
+  ctx.restore();
 }
 
-function drawRinkLine(wy, color, width){
-  const l = worldToScreen(20, wy);
-  const r = worldToScreen(RINK_W-20, wy);
-  ctx.strokeStyle = color;
-  ctx.lineWidth = width * devicePixelRatio * l.scale;
-  ctx.beginPath();
-  ctx.moveTo(l.x, l.y);
-  ctx.lineTo(r.x, r.y);
-  ctx.stroke();
-}
-
-function drawCircleOnIce(cx, cy, r, color, width){
-  ctx.strokeStyle = color;
-  const sc = getScale(cy);
-  ctx.lineWidth = width * devicePixelRatio * sc;
-  ctx.beginPath();
-  const steps = 32;
-  for(let i=0;i<=steps;i++){
-    const a = (i/steps)*Math.PI*2;
-    const px = cx + Math.cos(a)*r;
-    const py = cy + Math.sin(a)*r;
-    const s = worldToScreen(px, py);
-    if(i===0) ctx.moveTo(s.x, s.y);
-    else ctx.lineTo(s.x, s.y);
-  }
-  ctx.stroke();
-}
-
-function drawCrease(cx, cy, color){
-  ctx.fillStyle = color;
-  ctx.globalAlpha = 0.3;
-  ctx.beginPath();
-  const steps = 16;
-  const r = 40;
-  for(let i=0;i<=steps;i++){
-    const a = (i/steps)*Math.PI;
-    const px = cx + Math.cos(a)*r;
-    const py = cy + (cy < RINK_H/2 ? 1 : -1)*Math.sin(a)*r;
-    const s = worldToScreen(px, py);
-    if(i===0) ctx.moveTo(s.x, s.y);
-    else ctx.lineTo(s.x, s.y);
-  }
-  ctx.fill();
-  ctx.globalAlpha = 1;
-}
-
-function drawNet(cx, cy){
-  const l = worldToScreen(cx-GOAL_W/2, cy);
-  const r = worldToScreen(cx+GOAL_W/2, cy);
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 3 * devicePixelRatio * l.scale;
-  ctx.beginPath();
-  ctx.moveTo(l.x, l.y);
-  ctx.lineTo(r.x, r.y);
-  ctx.stroke();
-  // Net mesh look
-  const back = worldToScreen(cx, cy + (cy < RINK_H/2 ? -GOAL_D : GOAL_D));
-  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-  ctx.lineWidth = 1 * devicePixelRatio;
-  ctx.beginPath();
-  ctx.moveTo(l.x, l.y); ctx.lineTo(back.x, back.y); ctx.lineTo(r.x, r.y);
-  ctx.stroke();
-}
-
-function drawPlayer(p){
-  const s = worldToScreen(p.x, p.y);
-  const r = PLAYER_R * s.scale * devicePixelRatio * 0.08;
+function drawPlayer(p,idx){
+  const isControlled=idx===controlledIdx;
+  const color=p.home?(p.goalie?'#2266cc':'#2288ff'):(p.goalie?'#cc2222':'#ee3333');
+  const r=rs(p.goalie?GOALIE_R:PLAYER_R);
   
   // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.2)';
-  ctx.beginPath();
-  ctx.ellipse(s.x, s.y + r*0.5, r*1.2, r*0.4, 0, 0, Math.PI*2);
-  ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,0.15)';
+  ctx.beginPath(); ctx.ellipse(rx(p.x)+1,ry(p.y)+2,r,r*0.6,0,0,Math.PI*2); ctx.fill();
   
   // Body
-  const color = p.team === 0 ? '#2266ff' : '#ee3333';
-  const light = p.team === 0 ? '#4488ff' : '#ff6666';
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(s.x, s.y - r*0.3, r, 0, Math.PI*2);
-  ctx.fill();
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.arc(rx(p.x),ry(p.y),r,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=1.5;
+  ctx.stroke();
   
-  // Highlight
-  ctx.fillStyle = light;
-  ctx.beginPath();
-  ctx.arc(s.x - r*0.2, s.y - r*0.6, r*0.4, 0, Math.PI*2);
-  ctx.fill();
+  // Controlled indicator
+  if(isControlled){
+    ctx.strokeStyle='#ffdd00'; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(rx(p.x),ry(p.y),r+3,0,Math.PI*2); ctx.stroke();
+    // Arrow showing direction if moving
+    if(Math.abs(inputDir.x)>0.1||Math.abs(inputDir.y)>0.1){
+      const ang=Math.atan2(inputDir.y,inputDir.x);
+      ctx.strokeStyle='#ffdd00'; ctx.lineWidth=2;
+      ctx.beginPath();
+      ctx.moveTo(rx(p.x)+Math.cos(ang)*(r+4),ry(p.y)+Math.sin(ang)*(r+4));
+      ctx.lineTo(rx(p.x)+Math.cos(ang)*(r+10),ry(p.y)+Math.sin(ang)*(r+10));
+      ctx.stroke();
+    }
+  }
   
-  // Human indicator
-  if(p.isHuman){
-    ctx.strokeStyle = '#ff0';
-    ctx.lineWidth = 2 * devicePixelRatio * s.scale;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y - r*0.3, r*1.4, 0, Math.PI*2);
-    ctx.stroke();
-    // Arrow above
-    ctx.fillStyle = '#ff0';
-    ctx.beginPath();
-    const ay = s.y - r*2.2;
-    ctx.moveTo(s.x, ay - r*0.6);
-    ctx.lineTo(s.x - r*0.4, ay);
-    ctx.lineTo(s.x + r*0.4, ay);
-    ctx.closePath();
-    ctx.fill();
+  // Jersey number
+  ctx.fillStyle='#fff'; ctx.font=`bold ${Math.max(10,r*0.9|0)}px Arial`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const num=p.goalie?'G':(idx%6+1);
+  ctx.fillText(num,rx(p.x),ry(p.y)+1);
+}
+
+function drawPuck(){
+  const r=rs(PUCK_R);
+  ctx.fillStyle='#111';
+  ctx.beginPath(); ctx.arc(rx(puck.x),ry(puck.y),r,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#333'; ctx.lineWidth=1;
+  ctx.stroke();
+}
+
+function drawParticles(){
+  for(const p of particles){
+    ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+function draw(){
+  ctx.fillStyle='#0a0a0a'; ctx.fillRect(0,0,W,H);
+  drawRink();
+  // Draw players (away first, then home on top)
+  for(let i=6;i<12;i++) drawPlayer(players[i],i);
+  drawPuck();
+  for(let i=0;i<6;i++) drawPlayer(players[i],i);
+  drawParticles();
+  
+  if(gameState==='gameover'){
+    ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#fff'; ctx.font='bold 48px Arial'; ctx.textAlign='center';
+    ctx.fillText('GAME OVER',W/2,H/2-30);
+    ctx.font='32px Arial';
+    ctx.fillText(scoreHome>scoreAway?'HOME WINS!':'AWAY WINS!',W/2,H/2+20);
+    ctx.font='20px Arial'; ctx.fillStyle='#aaa';
+    ctx.fillText('Tap or press any key to restart',W/2,H/2+60);
   }
 }
 
-function drawGoalie(g){
-  const s = worldToScreen(g.x, g.y);
-  const r = 18 * s.scale * devicePixelRatio * 0.08;
+function gameLoop(ts){
+  const dt=Math.min((ts-(lastTime||ts))/1000, 0.05);
+  lastTime=ts;
   
-  ctx.fillStyle = 'rgba(0,0,0,0.2)';
-  ctx.beginPath();
-  ctx.ellipse(s.x, s.y + r*0.5, r*1.5, r*0.5, 0, 0, Math.PI*2);
-  ctx.fill();
-  
-  const color = g.team === 0 ? '#1144cc' : '#cc1111';
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  // Wider shape for goalie
-  ctx.ellipse(s.x, s.y - r*0.2, r*1.3, r*1.1, 0, 0, Math.PI*2);
-  ctx.fill();
-  
-  // Mask
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(s.x, s.y - r*0.5, r*0.5, 0, Math.PI*2);
-  ctx.fill();
-}
-
-function drawPuck(p){
-  const s = worldToScreen(p.x, p.y);
-  const r = 6 * s.scale * devicePixelRatio * 0.08;
-  
-  // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath();
-  ctx.ellipse(s.x+r*0.3, s.y+r*0.5, r*1.2, r*0.5, 0, 0, Math.PI*2);
-  ctx.fill();
-  
-  // Puck
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.arc(s.x, s.y, Math.max(r, 2*devicePixelRatio), 0, Math.PI*2);
-  ctx.fill();
-  
-  // Highlight
-  ctx.fillStyle = '#555';
-  ctx.beginPath();
-  ctx.arc(s.x - r*0.2, s.y - r*0.2, r*0.4, 0, Math.PI*2);
-  ctx.fill();
-}
-
-// ===== GAME LOOP =====
-function loop(ts){
-  const dt = Math.min((ts - lastTime)/1000, 0.05);
-  lastTime = ts;
-  
-  if(gameState === 'playing' || gameState === 'faceoff' || gameState === 'goal'){
-    update(dt);
-    updateHUD();
+  if(gameState==='goal'){
+    goalTimer-=dt;
+    // Still update particles
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i]; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=80*dt; p.life-=dt;
+      if(p.life<=0)particles.splice(i,1);
+    }
+    if(goalTimer<=0){
+      document.getElementById('goalOverlay').style.display='none';
+      gameState='playing';
+      resetPositions();
+    }
   }
+  
+  update(dt);
+  resize();
   draw();
-  requestAnimationFrame(loop);
+  requestAnimationFrame(gameLoop);
 }
 
-// ===== INPUT =====
-document.addEventListener('keydown', e => {keys[e.code]=true;e.preventDefault();});
-document.addEventListener('keyup', e => {keys[e.code]=false;});
+// Restart on gameover
+document.addEventListener('click',()=>{if(gameState==='gameover')startGame();});
+document.addEventListener('keydown',()=>{if(gameState==='gameover')startGame();});
 
-// Touch controls
-function detectMobile(){
-  isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  document.getElementById('touch-controls').style.display = isMobile ? 'block' : 'none';
-}
-
-// Joystick
-const jArea = document.getElementById('joystick-area');
-const jBase = document.getElementById('joystick-base');
-const jThumb = document.getElementById('joystick-thumb');
-let jTouch = null, jCenter = {x:0,y:0};
-
-jArea.addEventListener('touchstart', e => {
-  e.preventDefault();
-  const t = e.changedTouches[0];
-  jTouch = t.identifier;
-  jCenter = {x:t.clientX, y:t.clientY};
-  jBase.style.display = 'block';
-  jThumb.style.display = 'block';
-  jBase.style.left = (jCenter.x - 60) + 'px';
-  jBase.style.top = (jCenter.y - 60) + 'px';
-  jThumb.style.left = (jCenter.x - 25) + 'px';
-  jThumb.style.top = (jCenter.y - 25) + 'px';
-}, {passive:false});
-
-jArea.addEventListener('touchmove', e => {
-  e.preventDefault();
-  for(const t of e.changedTouches){
-    if(t.identifier === jTouch){
-      let dx = t.clientX - jCenter.x;
-      let dy = t.clientY - jCenter.y;
-      const d = Math.sqrt(dx*dx+dy*dy);
-      const maxR = 50;
-      if(d > maxR){dx*=maxR/d;dy*=maxR/d;}
-      jThumb.style.left = (jCenter.x + dx - 25) + 'px';
-      jThumb.style.top = (jCenter.y + dy - 25) + 'px';
-      joystickVec.x = dx/maxR;
-      joystickVec.y = dy/maxR;
-    }
-  }
-}, {passive:false});
-
-jArea.addEventListener('touchend', e => {
-  for(const t of e.changedTouches){
-    if(t.identifier === jTouch){
-      jTouch = null;
-      joystickVec.x = 0; joystickVec.y = 0;
-      jBase.style.display = 'none';
-      jThumb.style.display = 'none';
-    }
-  }
-});
-
-document.getElementById('btn-shoot').addEventListener('touchstart', e => {e.preventDefault();shootPressed=true;}, {passive:false});
-document.getElementById('btn-pass').addEventListener('touchstart', e => {e.preventDefault();passPressed=true;}, {passive:false});
-
-// ===== START =====
-document.getElementById('play-btn').addEventListener('click', () => {
-  initAudio();
-  document.getElementById('start-screen').style.display = 'none';
-  document.getElementById('hud').style.display = 'flex';
-  detectMobile();
-  initGame();
-  lastTime = performance.now();
-  requestAnimationFrame(loop);
-});
+requestAnimationFrame(gameLoop);
 </script>
 </body>
 </html>
