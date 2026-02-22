@@ -282,9 +282,11 @@ function createPlayerMesh(team, goalie) {
   bodyGroup.position.y = 0.1;
 
   // --- LEGS (bent at knee, separated) ---
+  const legGroups = [];
   for (const side of [-1, 1]) {
     const legGroup = new THREE.Group();
     legGroup.position.set(0, 0, side * 0.55 * sc);
+    legGroups.push(legGroup);
 
     // Skate boot
     const boot = new THREE.Mesh(new THREE.BoxGeometry(1.4*sc, 0.6*sc, 0.8*sc), skatesMat);
@@ -528,6 +530,12 @@ function createPlayerMesh(team, goalie) {
   stickGroup.position.y = 0.8;
   group.add(stickGroup);
   group._stick = stickGroup;
+
+  // Store animatable references
+  group._bodyGroup = bodyGroup;
+  group._legs = legGroups; // [left, right]
+  group._isGoalie = goalie;
+  group._prevFacing = 0; // track facing for rotation
 
   scene.add(group);
   return group;
@@ -993,12 +1001,70 @@ function sync3D(t) {
     const [tx, tz] = G(p.x, p.y);
     g.position.set(tx, 0, tz);
 
-    // Rotate stick in world space
-    if (g._stick) {
-      g._stick.rotation.y = -p.stickAngle;
+    const spd = Math.hypot(p.vx, p.vy);
+    const moveAngle = Math.atan2(p.vy, p.vx); // game-world movement direction
+
+    // ---- BODY ROTATION: face movement direction ----
+    if (spd > 3) {
+      // In Three.js, rotation.y = 0 means facing +x.
+      // Game angle 0 = +x, game angle π/2 = +y = Three.js +z
+      // Three.js y-rotation: positive = CCW from above, so -moveAngle
+      const targetFacing = -moveAngle;
+      const faceDiff = angleDiff(targetFacing, g._prevFacing || 0);
+      g._prevFacing = (g._prevFacing || 0) + faceDiff * 0.15; // smooth turn
+      g.rotation.y = g._prevFacing;
     }
 
-    // Blade flash on contact
+    // ---- SKATING STRIDE (legs) ----
+    if (g._legs && g._legs.length === 2) {
+      const strideFreq = 8 + spd * 0.12; // faster skating = faster stride
+      const strideAmp = clamp(spd / MAX_SPD, 0, 1) * 0.6; // bigger strides when faster
+      if (spd > 3) {
+        // Alternate legs: swing forward/back around the hip (rotation around X in leg-local space)
+        g._legs[0].rotation.x = Math.sin(t * strideFreq) * strideAmp;
+        g._legs[1].rotation.x = Math.sin(t * strideFreq + Math.PI) * strideAmp; // opposite phase
+        // Slight lateral push (skating crossover feel)
+        g._legs[0].position.z = -0.55 + Math.sin(t * strideFreq * 0.5) * 0.08;
+        g._legs[1].position.z = 0.55 + Math.sin(t * strideFreq * 0.5 + Math.PI) * 0.08;
+      } else {
+        // Idle: subtle weight shift
+        g._legs[0].rotation.x = Math.sin(t * 1.5) * 0.03;
+        g._legs[1].rotation.x = Math.sin(t * 1.5 + Math.PI) * 0.03;
+        g._legs[0].position.z = -0.55;
+        g._legs[1].position.z = 0.55;
+      }
+    }
+
+    // ---- BODY LEAN into turns + skating bob ----
+    if (g._bodyGroup) {
+      // Forward lean increases with speed
+      const leanFwd = 0.22 + clamp(spd / MAX_SPD, 0, 1) * 0.12;
+      g._bodyGroup.rotation.x = leanFwd;
+
+      // Lean into turns (body tilts sideways)
+      // Use angular velocity of facing as proxy for turning
+      const turnRate = angleDiff(-moveAngle, g._prevFacing || 0);
+      const leanSide = clamp(turnRate * 0.3, -0.15, 0.15);
+      g._bodyGroup.rotation.z = leanSide * (spd > 5 ? 1 : 0);
+
+      // Skating bob (up/down with stride)
+      if (spd > 5) {
+        const bob = Math.abs(Math.sin(t * (8 + spd * 0.12) * 2)) * 0.15 * clamp(spd / MAX_SPD, 0, 1);
+        g._bodyGroup.position.y = 0.1 + bob;
+      } else {
+        // Idle breathing
+        g._bodyGroup.position.y = 0.1 + Math.sin(t * 2) * 0.02;
+      }
+    }
+
+    // ---- STICK ROTATION (world-space, compensate for body rotation) ----
+    if (g._stick) {
+      // Stick needs to be in world angle, but it's a child of the group which rotates
+      // So subtract the group's y-rotation to keep stick in world space
+      g._stick.rotation.y = -p.stickAngle - (g._prevFacing || 0);
+    }
+
+    // ---- BLADE FLASH on contact ----
     if (g._bladeGlow) {
       if (p._bladeFlash > 0) {
         g._bladeGlow.material.opacity = p._bladeFlash * 2;
@@ -1011,7 +1077,7 @@ function sync3D(t) {
 
   // Human indicator
   const h = players[humanIdx], [hx, hz] = G(h.x, h.y);
-  humanIndicator.position.set(hx, 6.5, hz);
+  humanIndicator.position.set(hx, 7.5, hz); // raised for taller players
   ringMat.opacity = 0.6 + 0.4 * Math.sin(t * 5);
   hArrow.position.y = 1.2 + Math.sin(t * 4) * 0.3;
 
@@ -1022,8 +1088,14 @@ function sync3D(t) {
   puckGlow.position.set(px, 0.6, pz);
   puckGlow.visible = true;
   puckGlow.material.opacity = 0.4 + 0.4 * Math.sin(t * 8);
-  // Puck spotlight follows puck
+  // Puck spotlight
   puckLight.position.set(px, 5, pz);
+
+  // Puck spin based on velocity
+  const puckSpd = Math.hypot(puck.vx, puck.vy);
+  if (puckSpd > 5) {
+    puckMesh.rotation.y += puckSpd * 0.01;
+  }
 }
 
 // ========== MINIMAP ==========
