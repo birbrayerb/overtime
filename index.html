@@ -81,16 +81,25 @@ window.addEventListener('resize', () => {
   renderer.setSize(W, H);
 });
 
-// Lights
-scene.add(new THREE.AmbientLight(0x445566, 0.5));
-scene.add(new THREE.HemisphereLight(0x8899cc, 0x222244, 0.4));
-for (let i = 0; i < 4; i++) {
-  const pl = new THREE.PointLight(0xddeeff, 1.2, 180, 1.5);
-  pl.position.set(-60 + i * 40, 35, 0);
+// Lights — bright arena lighting
+scene.add(new THREE.AmbientLight(0x667788, 0.7));
+scene.add(new THREE.HemisphereLight(0xaabbdd, 0x333344, 0.6));
+// Arena overhead lights (brighter, whiter)
+for (let i = 0; i < 6; i++) {
+  const pl = new THREE.PointLight(0xfff8f0, 1.5, 200, 1.2);
+  pl.position.set(-80 + i * 32, 40, 0);
   scene.add(pl);
 }
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-dirLight.position.set(0, 50, 0);
+// Side lights for board visibility
+for (let i = 0; i < 4; i++) {
+  for (const sz of [-1, 1]) {
+    const sl = new THREE.PointLight(0xfff8f0, 0.4, 80, 2);
+    sl.position.set(-60 + i * 40, 15, sz * 35);
+    scene.add(sl);
+  }
+}
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+dirLight.position.set(0, 50, 10);
 scene.add(dirLight);
 
 // ========== CONSTANTS ==========
@@ -108,40 +117,86 @@ function G(gx, gy) { return [gx - 100, gy - 42.5]; }
 
 // ========== BUILD RINK ==========
 function buildRink() {
-  const arenaMat = new THREE.MeshBasicMaterial({ color: 0x080c18, side: THREE.BackSide });
+  // Arena shell — darker ceiling, slightly visible walls
+  const arenaMat = new THREE.MeshBasicMaterial({ color: 0x0c1020, side: THREE.BackSide });
   const arena = new THREE.Mesh(new THREE.BoxGeometry(320, 80, 220), arenaMat);
   arena.position.y = 35; scene.add(arena);
 
-  const crowdMat = new THREE.MeshBasicMaterial({ color: 0x1a1a2e });
+  // Crowd stands — rows of colored seats
   for (let side of [-1, 1]) {
-    const cw = new THREE.Mesh(new THREE.PlaneGeometry(240, 30), crowdMat);
-    cw.position.set(0, 20, side * 70);
-    cw.rotation.y = side > 0 ? Math.PI : 0;
-    scene.add(cw);
+    // Lower bowl (darker, closer)
+    const lower = new THREE.Mesh(new THREE.PlaneGeometry(240, 15),
+      new THREE.MeshBasicMaterial({ color: 0x222240 }));
+    lower.position.set(0, 12, side * 62); lower.rotation.y = side > 0 ? Math.PI : 0;
+    scene.add(lower);
+    // Upper bowl
+    const upper = new THREE.Mesh(new THREE.PlaneGeometry(240, 20),
+      new THREE.MeshBasicMaterial({ color: 0x1a1a30 }));
+    upper.position.set(0, 28, side * 75); upper.rotation.y = side > 0 ? Math.PI : 0;
+    scene.add(upper);
+    // Crowd dots (random colored patches to simulate people)
+    for (let i = 0; i < 80; i++) {
+      const cx = -100 + Math.random() * 200;
+      const cy = 6 + Math.random() * 25;
+      const colors = [0xcc3333, 0x3355cc, 0xeeeeee, 0xffcc00, 0x44aa44, 0xff6600];
+      const dot = new THREE.Mesh(new THREE.PlaneGeometry(1.5 + Math.random(), 1.5 + Math.random()),
+        new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)] }));
+      dot.position.set(cx, cy, side * (62 + Math.random() * 15));
+      dot.rotation.y = side > 0 ? Math.PI : 0;
+      scene.add(dot);
+    }
   }
 
   const iceMat = new THREE.MeshStandardMaterial({ color: 0xe0e8f0, roughness: 0.15, metalness: 0 });
   const ice = new THREE.Mesh(new THREE.PlaneGeometry(RW, RH), iceMat);
   ice.rotation.x = -Math.PI / 2; scene.add(ice);
 
-  const boardMat = new THREE.MeshStandardMaterial({ color: 0x1c2d4a, roughness: 0.7 });
-  const capMat = new THREE.MeshStandardMaterial({ color: 0x3a5a84, roughness: 0.5 });
-  const bH = 4, bT = 1.2;
+  // Realistic hockey boards: yellow kick plate, white dasher, yellow cap, clear glass
+  const kickMat = new THREE.MeshStandardMaterial({ color: 0xddaa00, roughness: 0.6 }); // yellow kick plate
+  const dasherMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.4 }); // white dasher
+  const capMat = new THREE.MeshStandardMaterial({ color: 0xddaa00, roughness: 0.4 }); // yellow top rail
+  const redStripeMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.5 }); // red stripe
+  const bT = 1.2;
+  const kickH = 1.2, dasherH = 2.8, totalH = kickH + dasherH;
 
   for (const sz of [-1, 1]) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(RW + 2, bH, bT), boardMat);
-    b.position.set(0, bH / 2, sz * (RH / 2 + bT / 2)); scene.add(b);
-    const c = new THREE.Mesh(new THREE.BoxGeometry(RW + 2, 0.3, bT + 0.4), capMat);
-    c.position.set(0, bH + 0.15, sz * (RH / 2 + bT / 2)); scene.add(c);
-    const gm = new THREE.MeshBasicMaterial({ color: 0x88aacc, transparent: true, opacity: 0.06, side: THREE.DoubleSide });
-    const gl = new THREE.Mesh(new THREE.PlaneGeometry(RW + 2, 5), gm);
-    gl.position.set(0, bH + 2.5, sz * (RH / 2 + bT)); gl.rotation.y = sz > 0 ? Math.PI : 0; scene.add(gl);
+    // Yellow kick plate (bottom)
+    const kick = new THREE.Mesh(new THREE.BoxGeometry(RW + 2, kickH, bT), kickMat);
+    kick.position.set(0, kickH / 2, sz * (RH / 2 + bT / 2)); scene.add(kick);
+    // White dasher board (upper)
+    const dasher = new THREE.Mesh(new THREE.BoxGeometry(RW + 2, dasherH, bT), dasherMat);
+    dasher.position.set(0, kickH + dasherH / 2, sz * (RH / 2 + bT / 2)); scene.add(dasher);
+    // Red stripe on dasher
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(RW + 2, 0.3, bT + 0.05), redStripeMat);
+    stripe.position.set(0, kickH + dasherH * 0.5, sz * (RH / 2 + bT / 2)); scene.add(stripe);
+    // Yellow top cap
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(RW + 2, 0.35, bT + 0.4), capMat);
+    cap.position.set(0, totalH + 0.17, sz * (RH / 2 + bT / 2)); scene.add(cap);
+    // Glass panels above boards
+    const glassMat = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.08,
+      roughness: 0, metalness: 0, side: THREE.DoubleSide
+    });
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(RW + 2, 6), glassMat);
+    glass.position.set(0, totalH + 3, sz * (RH / 2 + bT));
+    glass.rotation.y = sz > 0 ? Math.PI : 0; scene.add(glass);
+    // Glass support posts
+    for (let gp = -90; gp <= 90; gp += 20) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 0.2),
+        new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5 }));
+      post.position.set(gp, totalH + 3, sz * (RH / 2 + bT / 2)); scene.add(post);
+    }
   }
+  // End boards (same treatment)
   for (const sx of [-1, 1]) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(bT, bH, RH + 2 * bT), boardMat);
-    b.position.set(sx * (RW / 2 + bT / 2), bH / 2, 0); scene.add(b);
-    const c = new THREE.Mesh(new THREE.BoxGeometry(bT + 0.4, 0.3, RH + 2 * bT + 0.4), capMat);
-    c.position.set(sx * (RW / 2 + bT / 2), bH + 0.15, 0); scene.add(c);
+    const kick = new THREE.Mesh(new THREE.BoxGeometry(bT, kickH, RH + 2 * bT), kickMat);
+    kick.position.set(sx * (RW / 2 + bT / 2), kickH / 2, 0); scene.add(kick);
+    const dasher = new THREE.Mesh(new THREE.BoxGeometry(bT, dasherH, RH + 2 * bT), dasherMat);
+    dasher.position.set(sx * (RW / 2 + bT / 2), kickH + dasherH / 2, 0); scene.add(dasher);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(bT + 0.05, 0.3, RH + 2 * bT), redStripeMat);
+    stripe.position.set(sx * (RW / 2 + bT / 2), kickH + dasherH * 0.5, 0); scene.add(stripe);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(bT + 0.4, 0.35, RH + 2 * bT + 0.4), capMat);
+    cap.position.set(sx * (RW / 2 + bT / 2), totalH + 0.17, 0); scene.add(cap);
   }
 
   const LY = 0.05;
@@ -197,56 +252,151 @@ const playerGroups = [];
 
 function createPlayerMesh(team, goalie) {
   const group = new THREE.Group();
-  const bH = goalie ? 4.5 : 4, bR = goalie ? 1.8 : 1.4;
-  const col = team === 0 ? 0x2266ff : 0xee3333;
-  const dark = team === 0 ? 0x1144aa : 0xaa1111;
+  const jerseyCol = team === 0 ? 0x1155cc : 0xcc1111;
+  const jerseyDark = team === 0 ? 0x0a3388 : 0x881010;
+  const pantsCol = team === 0 ? 0x0a2255 : 0x551010;
+  const helmetCol = team === 0 ? 0x1144aa : 0xaa1818;
+  const skinCol = 0xe8c4a0;
+  const jerseyMat = new THREE.MeshPhongMaterial({ color: jerseyCol, emissive: jerseyDark, emissiveIntensity: 0.1 });
+  const pantsMat = new THREE.MeshPhongMaterial({ color: pantsCol });
+  const helmetMat = new THREE.MeshPhongMaterial({ color: helmetCol, shininess: 60 });
+  const skatesMat = new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 40 });
+  const gloveMat = new THREE.MeshPhongMaterial({ color: team === 0 ? 0x1133aa : 0xaa1111 });
+  const sockMat = new THREE.MeshPhongMaterial({ color: jerseyCol });
+  const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const cageMat = new THREE.MeshBasicMaterial({ color: 0xcccccc, wireframe: true });
+  const sc = goalie ? 1.15 : 1.0;
 
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(bR * 0.75, bR, bH, 12),
-    new THREE.MeshPhongMaterial({ color: col, emissive: dark, emissiveIntensity: 0.15 })
+  // Skates (dark blocks at bottom)
+  for (const sz of [-0.5, 0.5]) {
+    const skate = new THREE.Mesh(new THREE.BoxGeometry(1.2*sc, 0.5, 0.7*sc), skatesMat);
+    skate.position.set(0, 0.25, sz*sc); group.add(skate);
+    // Blade
+    const bl = new THREE.Mesh(new THREE.BoxGeometry(1.4*sc, 0.06, 0.08), new THREE.MeshPhongMaterial({color:0x888888,metalness:0.8}));
+    bl.position.set(0, 0.03, sz*sc); group.add(bl);
+  }
+
+  // Socks/shinguards (team-colored cylinders)
+  for (const sz of [-0.5, 0.5]) {
+    const sock = new THREE.Mesh(new THREE.CylinderGeometry(0.35*sc, 0.4*sc, 1.8, 8), sockMat);
+    sock.position.set(0, 1.4, sz*sc); group.add(sock);
+    // White stripe on socks
+    const ss = new THREE.Mesh(new THREE.CylinderGeometry(0.36*sc, 0.36*sc, 0.2, 8), whiteMat);
+    ss.position.set(0, 1.0, sz*sc); group.add(ss);
+  }
+
+  // Hockey pants/breezers (wider, darker)
+  const pants = new THREE.Mesh(new THREE.CylinderGeometry(1.0*sc, 0.9*sc, 1.6, 10), pantsMat);
+  pants.position.y = 2.8; group.add(pants);
+
+  // Torso/jersey (slightly tapered)
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.85*sc, 1.0*sc, 2.2, 10), jerseyMat);
+  torso.position.y = 4.4; group.add(torso);
+
+  // Shoulder pads (wider than torso)
+  const shoulders = new THREE.Mesh(new THREE.CylinderGeometry(1.15*sc, 1.1*sc, 0.5, 10), jerseyMat);
+  shoulders.position.y = 5.3; group.add(shoulders);
+
+  // White jersey stripes (chest + arms)
+  const chestStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.88*sc, 0.92*sc, 0.25, 10), whiteMat);
+  chestStripe.position.y = 3.5; group.add(chestStripe);
+  const chestStripe2 = new THREE.Mesh(new THREE.CylinderGeometry(0.86*sc, 0.88*sc, 0.15, 10), whiteMat);
+  chestStripe2.position.y = 3.7; group.add(chestStripe2);
+
+  // Arms (team colored with white stripe)
+  for (const sz of [-1, 1]) {
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.25*sc, 0.3*sc, 2.0, 8), jerseyMat);
+    arm.position.set(0, 4.3, sz * 1.25*sc);
+    arm.rotation.x = sz * 0.15; // slight outward angle
+    group.add(arm);
+    // Elbow pad
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.32*sc, 8, 6), jerseyMat);
+    elbow.position.set(0, 3.4, sz * 1.3*sc); group.add(elbow);
+    // White arm stripe
+    const armStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.26*sc, 0.26*sc, 0.2, 8), whiteMat);
+    armStripe.position.set(0, 3.8, sz * 1.25*sc); group.add(armStripe);
+    // Glove
+    const glove = new THREE.Mesh(new THREE.BoxGeometry(0.5*sc, 0.6*sc, 0.5*sc), gloveMat);
+    glove.position.set(0, 3.0, sz * 1.3*sc); group.add(glove);
+  }
+
+  // Neck
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.3*sc, 0.35*sc, 0.4, 8),
+    new THREE.MeshPhongMaterial({ color: skinCol }));
+  neck.position.y = 5.7; group.add(neck);
+
+  // Helmet
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.55*sc, 12, 10), helmetMat);
+  helmet.position.y = 6.2; group.add(helmet);
+  // Cage/visor
+  const cage = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5*sc, 6, 4, 0, Math.PI, 0, Math.PI * 0.6),
+    goalie ? new THREE.MeshPhongMaterial({ color: 0xeeeeee, transparent: true, opacity: 0.4 }) : cageMat
   );
-  body.position.y = bH / 2 + 0.1; group.add(body);
+  cage.position.set(0.2*sc, 6.15, 0);
+  cage.rotation.y = Math.PI / 2;
+  group.add(cage);
 
-  const stripe = new THREE.Mesh(
-    new THREE.CylinderGeometry(bR * 0.76, bR * 1.01, 0.5, 12),
-    new THREE.MeshBasicMaterial({ color: 0xffffff })
-  );
-  stripe.position.y = bH * 0.4; group.add(stripe);
+  // Number on back (simple circle as placeholder)
+  const numBg = new THREE.Mesh(new THREE.CircleGeometry(0.5*sc, 8), whiteMat);
+  numBg.position.set(-0.86*sc, 4.4, 0);
+  numBg.rotation.y = Math.PI;
+  group.add(numBg);
 
-  const headR = bR * 0.45;
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(headR, 10, 8),
-    new THREE.MeshPhongMaterial({ color: team === 0 ? 0x3366cc : 0xcc2222 })
-  );
-  head.position.y = bH + headR * 0.6; group.add(head);
+  // Goalie extras: bigger pads
+  if (goalie) {
+    for (const sz of [-0.5, 0.5]) {
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.4, 1.0),
+        new THREE.MeshPhongMaterial({ color: 0xeeeeee }));
+      pad.position.set(0.2, 1.5, sz * 1.0); group.add(pad);
+    }
+    // Blocker
+    const blocker = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.4),
+      new THREE.MeshPhongMaterial({ color: jerseyCol }));
+    blocker.position.set(0, 3.0, 1.5); group.add(blocker);
+    // Glove (trapper) — bigger
+    const trapper = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.8),
+      new THREE.MeshPhongMaterial({ color: jerseyCol }));
+    trapper.position.set(0, 3.2, -1.5); group.add(trapper);
+  }
 
-  // Stick — separate group for rotation
+  // === Hockey stick ===
   const stickGroup = new THREE.Group();
   const shaft = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.1, 0.1, STICK_LEN, 6),
-    new THREE.MeshPhongMaterial({ color: 0x4a3020 })
+    new THREE.CylinderGeometry(0.08, 0.1, STICK_LEN, 6),
+    new THREE.MeshPhongMaterial({ color: 0x222222, shininess: 30 })
   );
   shaft.rotation.z = Math.PI / 2;
   shaft.position.set(STICK_LEN / 2, 0, 0);
   stickGroup.add(shaft);
 
+  // Tape on shaft (white grip)
+  const tape = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 1.5, 6), whiteMat);
+  tape.rotation.z = Math.PI / 2;
+  tape.position.set(0.8, 0, 0);
+  stickGroup.add(tape);
+
   const blade = new THREE.Mesh(
-    new THREE.BoxGeometry(1.8, 0.2, 0.6),
-    new THREE.MeshPhongMaterial({ color: 0x222222 })
+    new THREE.BoxGeometry(2.0, 0.2, 0.6),
+    new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 20 })
   );
   blade.position.set(STICK_LEN, -0.15, 0);
   stickGroup.add(blade);
 
-  // Blade glow (for visual feedback on contact)
+  // Blade tape (white)
+  const bladeTape = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.22, 0.62), whiteMat);
+  bladeTape.position.set(STICK_LEN, -0.15, 0);
+  stickGroup.add(bladeTape);
+
   const bladeGlow = new THREE.Mesh(
-    new THREE.BoxGeometry(2.2, 0.4, 0.9),
+    new THREE.BoxGeometry(2.4, 0.5, 1.0),
     new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0 })
   );
   bladeGlow.position.set(STICK_LEN, -0.1, 0);
   stickGroup.add(bladeGlow);
   group._bladeGlow = bladeGlow;
 
-  stickGroup.position.y = 1.2;
+  stickGroup.position.y = 1.0;
   group.add(stickGroup);
   group._stick = stickGroup;
 
