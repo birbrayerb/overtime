@@ -283,44 +283,46 @@ function createPlayerMesh(team, goalie) {
 
   // --- LEGS (bent at knee, separated) ---
   const legGroups = [];
+  const hipY = 3.4; // hip joint height — pivot point for leg swing
   for (const side of [-1, 1]) {
     const legGroup = new THREE.Group();
-    legGroup.position.set(0, 0, side * 0.55 * sc);
+    legGroup.position.set(0, hipY, side * 0.55 * sc); // pivot at hip height
     legGroups.push(legGroup);
 
+    // All leg parts offset downward from hip (y=0 in legGroup = hip joint)
     // Skate boot
     const boot = new THREE.Mesh(new THREE.BoxGeometry(1.4*sc, 0.6*sc, 0.8*sc), skatesMat);
-    boot.position.set(0.15, 0.3, 0);
+    boot.position.set(0.15, 0.3 - hipY, 0);
     legGroup.add(boot);
     // Skate blade
     const bl = new THREE.Mesh(new THREE.BoxGeometry(1.6*sc, 0.05, 0.06), bladeMetal);
-    bl.position.set(0.1, 0.02, 0);
+    bl.position.set(0.1, 0.02 - hipY, 0);
     legGroup.add(bl);
     // Ankle
     const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.28*sc, 8, 6), skatesMat);
-    ankle.position.set(0, 0.55, 0); legGroup.add(ankle);
+    ankle.position.set(0, 0.55 - hipY, 0); legGroup.add(ankle);
 
-    // Shin/calf (angled back — bent knee)
+    // Shin/calf
     const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.28*sc, 0.32*sc, 1.6*sc, 8), sockMat());
-    shin.position.set(-0.15, 1.35, 0);
-    shin.rotation.z = 0.2; // angled slightly back
+    shin.position.set(-0.15, 1.35 - hipY, 0);
+    shin.rotation.z = 0.2;
     legGroup.add(shin);
-    // Shin pad (white, over sock)
+    // Shin pad
     const shinPad = new THREE.Mesh(new THREE.BoxGeometry(0.35*sc, 1.0*sc, 0.5*sc), whiteMat);
-    shinPad.position.set(0.05, 1.3, 0); legGroup.add(shinPad);
+    shinPad.position.set(0.05, 1.3 - hipY, 0); legGroup.add(shinPad);
     // Sock stripes
     const sockStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.3*sc, 0.3*sc, 0.15, 8), whiteMat);
-    sockStripe.position.set(-0.1, 0.9, 0); legGroup.add(sockStripe);
+    sockStripe.position.set(-0.1, 0.9 - hipY, 0); legGroup.add(sockStripe);
     const sockStripe2 = new THREE.Mesh(new THREE.CylinderGeometry(0.3*sc, 0.3*sc, 0.15, 8), jerseyMat);
-    sockStripe2.position.set(-0.1, 1.1, 0); legGroup.add(sockStripe2);
+    sockStripe2.position.set(-0.1, 1.1 - hipY, 0); legGroup.add(sockStripe2);
 
     // Knee
     const knee = new THREE.Mesh(new THREE.SphereGeometry(0.34*sc, 8, 6), pantsMat);
-    knee.position.set(-0.25, 2.1, 0); legGroup.add(knee);
+    knee.position.set(-0.25, 2.1 - hipY, 0); legGroup.add(knee);
 
-    // Thigh (angled forward from hip)
+    // Thigh
     const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.38*sc, 0.34*sc, 1.3*sc, 8), pantsMat);
-    thigh.position.set(-0.05, 2.75, 0);
+    thigh.position.set(-0.05, 2.75 - hipY, 0);
     thigh.rotation.z = -0.15;
     legGroup.add(thigh);
 
@@ -1018,20 +1020,20 @@ function sync3D(t) {
     // ---- SKATING STRIDE (legs) ----
     if (g._legs && g._legs.length === 2) {
       const strideFreq = 8 + spd * 0.12; // faster skating = faster stride
-      const strideAmp = clamp(spd / MAX_SPD, 0, 1) * 0.6; // bigger strides when faster
+      const strideAmp = clamp(spd / MAX_SPD, 0, 1) * 0.35; // bigger strides when faster
       if (spd > 3) {
         // Alternate legs: swing forward/back around the hip (rotation around X in leg-local space)
         g._legs[0].rotation.x = Math.sin(t * strideFreq) * strideAmp;
         g._legs[1].rotation.x = Math.sin(t * strideFreq + Math.PI) * strideAmp; // opposite phase
         // Slight lateral push (skating crossover feel)
-        g._legs[0].position.z = -0.55 + Math.sin(t * strideFreq * 0.5) * 0.08;
-        g._legs[1].position.z = 0.55 + Math.sin(t * strideFreq * 0.5 + Math.PI) * 0.08;
+        g._legs[0].position.z = -0.55 * (g._sc||1) + Math.sin(t * strideFreq * 0.5) * 0.08;
+        g._legs[1].position.z = 0.55 * (g._sc||1) + Math.sin(t * strideFreq * 0.5 + Math.PI) * 0.08;
       } else {
         // Idle: subtle weight shift
         g._legs[0].rotation.x = Math.sin(t * 1.5) * 0.03;
         g._legs[1].rotation.x = Math.sin(t * 1.5 + Math.PI) * 0.03;
-        g._legs[0].position.z = -0.55;
-        g._legs[1].position.z = 0.55;
+        g._legs[0].position.z = -0.55 * (g._sc||1);
+        g._legs[1].position.z = 0.55 * (g._sc||1);
       }
     }
 
