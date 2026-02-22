@@ -6,7 +6,7 @@
 <title>OVERTIME - 3v3 Hockey</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;-webkit-user-select:none;user-select:none}
+body{background:#111;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;-webkit-user-select:none;user-select:none;touch-action:none}
 canvas{display:block;position:absolute;top:0;left:0}
 
 #startScreen{position:fixed;inset:0;z-index:200;background:linear-gradient(135deg,#0a1628 0%,#1a3a5c 50%,#0a1628 100%);display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -14,20 +14,11 @@ canvas{display:block;position:absolute;top:0;left:0}
 #startScreen .sub{color:#8cf;font-size:min(5vw,20px);margin-bottom:40px;letter-spacing:4px}
 #playBtn{font-size:min(7vw,32px);padding:18px 60px;background:linear-gradient(180deg,#e33,#b00);color:#fff;border:none;border-radius:50px;cursor:pointer;letter-spacing:3px;font-weight:700;touch-action:manipulation;-webkit-tap-highlight-color:transparent;box-shadow:0 4px 20px rgba(255,0,0,0.4)}
 
-#hud{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:50;background:rgba(0,0,0,0.8);border-radius:12px;padding:8px 24px;color:#fff;text-align:center;display:none}
-#hud .score{font-size:28px;font-weight:bold}
+#hud{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:50;background:rgba(0,0,0,0.85);border-radius:12px;padding:6px 20px;color:#fff;text-align:center;display:none}
+#hud .score{font-size:26px;font-weight:bold}
 #hud .score .blue{color:#4af}
 #hud .score .red{color:#f44}
-#hud .info{font-size:13px;color:#888}
-
-#controls{position:fixed;bottom:0;left:0;right:0;z-index:50;display:none;pointer-events:none;height:200px}
-#joyZone{position:absolute;left:0;bottom:0;width:50%;height:100%;pointer-events:auto;touch-action:none}
-#joyBase{position:absolute;width:120px;height:120px;border-radius:50%;border:3px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);display:none;pointer-events:none}
-#joyKnob{position:absolute;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,0.4);display:none;pointer-events:none}
-#btnZone{position:absolute;right:20px;bottom:30px;pointer-events:auto;display:flex;flex-direction:column;gap:12px}
-#btnZone button{width:72px;height:72px;border-radius:50%;border:2px solid rgba(255,255,255,0.4);font-size:12px;font-weight:bold;color:#fff;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-#btnShoot{background:rgba(220,40,40,0.5)}
-#btnPass{background:rgba(40,120,220,0.5)}
+#hud .info{font-size:12px;color:#888}
 
 #goalFlash{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;pointer-events:none;background:rgba(255,0,0,0.15)}
 #goalFlash span{font-size:min(15vw,80px);font-weight:900;color:#fff;text-shadow:0 0 40px red}
@@ -48,60 +39,61 @@ canvas{display:block;position:absolute;top:0;left:0}
   <div class="info">P<span id="sPer">1</span> · <span id="sTime">2:00</span></div>
 </div>
 
-<div id="controls">
-  <div id="joyZone"></div>
-  <div id="joyBase"></div>
-  <div id="joyKnob"></div>
-  <div id="btnZone">
-    <button id="btnShoot">SHOOT</button>
-    <button id="btnPass">PASS</button>
-  </div>
-</div>
-
 <div id="goalFlash"><span>🚨 GOAL!</span></div>
 
 <script>
 const C = document.getElementById('c');
 const ctx = C.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
 
 // ---- Sizing ----
 let W, H, rX, rY, rW, rH, S;
 function resize() {
-  W = C.width = window.innerWidth;
-  H = C.height = window.innerHeight;
-  // Fit rink (200x85 units) with padding
-  const aspect = 200/85;
-  const pad = 20;
-  const availW = W - pad*2, availH = H - pad*2 - 50;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  C.width = W * dpr;
+  C.height = H * dpr;
+  C.style.width = W + 'px';
+  C.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Reserve space for touch controls on mobile
+  const hudH = 50;
+  const ctrlH = isMobile ? 160 : 0;
+  const availW = W - 20, availH = H - hudH - ctrlH - 10;
+  const aspect = 200 / 85;
   if (availW / availH > aspect) { rH = availH; rW = rH * aspect; }
   else { rW = availW; rH = rW / aspect; }
   rX = (W - rW) / 2;
-  rY = (H - rH) / 2 + 25;
+  rY = hudH + (availH - rH) / 2;
   S = rW / 200;
 }
+
+const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 window.addEventListener('resize', resize);
 resize();
 
 // ---- Coordinate helpers ----
 function wx(x) { return rX + x * S; }
 function wy(y) { return rY + y * S; }
-function ws(s) { return s * S; }
+function ws(v) { return v * S; }
 
 // ---- Constants ----
 const RW = 200, RH = 85, CX = 100, CY = 42.5;
 const PERIOD_SECS = 120;
-const PR = 3.5; // player radius
-const PKR = 1.2; // puck radius
-const GR = 4; // goalie radius
-const GOAL_W = 12; // goal width
-const ACCEL = 250;
-const FRICTION = 0.92;
-const MAX_SPD = 90;
-const SHOT_SPD = 250;
-const PASS_SPD = 180;
+const PR = 5;   // player radius (was 3.5 — bigger!)
+const PKR = 2;   // puck radius (was 1.2 — bigger!)
+const GR = 5.5;  // goalie radius
+const GOAL_W = 14;
+const ACCEL = 280;
+const FRICTION = 0.91;
+const MAX_SPD = 95;
+const SHOT_SPD = 260;
+const PASS_SPD = 190;
+const STICK_LEN = 6;
 
 // ---- State ----
-let state = 'menu'; // menu, playing, faceoff, goal, periodEnd, over
+let state = 'menu';
 let score = [0, 0];
 let period = 1;
 let clock = PERIOD_SECS;
@@ -112,31 +104,34 @@ let particles = [];
 // ---- Entities ----
 let players = [];
 let puck = { x: CX, y: CY, vx: 0, vy: 0, owner: null };
+let humanIdx = 1;
+
+const JERSEY_NUMS = [[1,9,11,7],[30,17,22,8]]; // blue, red
 
 function makeTeams() {
   players = [];
-  // Blue team (left side, attacks right toward x=200)
-  players.push({ x:10, y:CY, vx:0, vy:0, team:0, goalie:true }); // 0: goalie
-  players.push({ x:60, y:CY, vx:0, vy:0, team:0, goalie:false }); // 1: center (HUMAN)
-  players.push({ x:45, y:CY-20, vx:0, vy:0, team:0, goalie:false }); // 2: wing
-  players.push({ x:45, y:CY+20, vx:0, vy:0, team:0, goalie:false }); // 3: wing
-  // Red team (right side, attacks left toward x=0)
-  players.push({ x:190, y:CY, vx:0, vy:0, team:1, goalie:true }); // 4: goalie
-  players.push({ x:140, y:CY, vx:0, vy:0, team:1, goalie:false }); // 5
-  players.push({ x:155, y:CY-20, vx:0, vy:0, team:1, goalie:false }); // 6
-  players.push({ x:155, y:CY+20, vx:0, vy:0, team:1, goalie:false }); // 7
+  // Blue team (attacks right)
+  players.push({ x:10, y:CY, vx:0, vy:0, team:0, goalie:true, num:JERSEY_NUMS[0][0] });
+  players.push({ x:60, y:CY, vx:0, vy:0, team:0, goalie:false, num:JERSEY_NUMS[0][1] }); // human
+  players.push({ x:45, y:CY-22, vx:0, vy:0, team:0, goalie:false, num:JERSEY_NUMS[0][2] });
+  players.push({ x:45, y:CY+22, vx:0, vy:0, team:0, goalie:false, num:JERSEY_NUMS[0][3] });
+  // Red team (attacks left)
+  players.push({ x:190, y:CY, vx:0, vy:0, team:1, goalie:true, num:JERSEY_NUMS[1][0] });
+  players.push({ x:140, y:CY, vx:0, vy:0, team:1, goalie:false, num:JERSEY_NUMS[1][1] });
+  players.push({ x:155, y:CY-22, vx:0, vy:0, team:1, goalie:false, num:JERSEY_NUMS[1][2] });
+  players.push({ x:155, y:CY+22, vx:0, vy:0, team:1, goalie:false, num:JERSEY_NUMS[1][3] });
 }
 
 function faceoff() {
   puck.x = CX; puck.y = CY; puck.vx = 0; puck.vy = 0; puck.owner = null;
   players[0].x = 10; players[0].y = CY;
   players[1].x = 95; players[1].y = CY;
-  players[2].x = 80; players[2].y = CY - 20;
-  players[3].x = 80; players[3].y = CY + 20;
+  players[2].x = 80; players[2].y = CY - 22;
+  players[3].x = 80; players[3].y = CY + 22;
   players[4].x = 190; players[4].y = CY;
   players[5].x = 105; players[5].y = CY;
-  players[6].x = 120; players[6].y = CY - 20;
-  players[7].x = 120; players[7].y = CY + 20;
+  players[6].x = 120; players[6].y = CY - 22;
+  players[7].x = 120; players[7].y = CY + 22;
   for (let p of players) { p.vx = 0; p.vy = 0; }
   faceoffTimer = 1.5;
   state = 'faceoff';
@@ -150,6 +145,7 @@ document.addEventListener('keydown', e => { keys[e.code] = true; });
 document.addEventListener('keyup', e => { keys[e.code] = false; });
 
 function readKeys() {
+  if (isMobile) return; // touch handles input
   let ix = 0, iy = 0;
   if (keys['ArrowLeft'] || keys['KeyA']) ix -= 1;
   if (keys['ArrowRight'] || keys['KeyD']) ix += 1;
@@ -162,55 +158,70 @@ function readKeys() {
   if (keys['KeyE']) { wantPass = true; keys['KeyE'] = false; }
 }
 
-// ---- Touch joystick ----
-let joyTouch = null, joyCenter = { x: 0, y: 0 };
-const joyZone = document.getElementById('joyZone');
-const joyBase = document.getElementById('joyBase');
-const joyKnob = document.getElementById('joyKnob');
-const isMobile = 'ontouchstart' in window;
+// ---- Touch controls (drawn on canvas, no DOM overlay) ----
+let joyActive = false, joyTouchId = null;
+let joyCX = 0, joyCY = 0; // center of joystick
+let joyDX = 0, joyDY = 0; // current displacement
+const JOY_R = 50; // base radius
+const KNOB_R = 22;
+// Button positions (set in draw)
+let btnShootCX = 0, btnShootCY = 0, btnPassCX = 0, btnPassCY = 0;
+const BTN_R = 34;
+let shootTouchId = null, passTouchId = null;
 
-joyZone.addEventListener('touchstart', e => {
-  e.preventDefault();
-  const t = e.changedTouches[0];
-  joyTouch = t.identifier;
-  joyCenter.x = t.clientX;
-  joyCenter.y = t.clientY;
-  joyBase.style.display = 'block';
-  joyKnob.style.display = 'block';
-  joyBase.style.left = (joyCenter.x - 60) + 'px';
-  joyBase.style.top = (joyCenter.y - 60) + 'px';
-  joyKnob.style.left = (joyCenter.x - 25) + 'px';
-  joyKnob.style.top = (joyCenter.y - 25) + 'px';
-}, { passive: false });
-
-joyZone.addEventListener('touchmove', e => {
+function handleTouchStart(e) {
   e.preventDefault();
   for (const t of e.changedTouches) {
-    if (t.identifier !== joyTouch) continue;
-    let dx = t.clientX - joyCenter.x;
-    let dy = t.clientY - joyCenter.y;
-    const d = Math.sqrt(dx*dx + dy*dy);
-    const maxR = 45;
-    if (d > maxR) { dx *= maxR/d; dy *= maxR/d; }
-    joyKnob.style.left = (joyCenter.x + dx - 25) + 'px';
-    joyKnob.style.top = (joyCenter.y + dy - 25) + 'px';
-    input.x = dx / maxR;
-    input.y = dy / maxR;
+    const tx = t.clientX, ty = t.clientY;
+    // Check shoot button
+    if (Math.hypot(tx - btnShootCX, ty - btnShootCY) < BTN_R + 10) {
+      shootTouchId = t.identifier;
+      wantShoot = true;
+      continue;
+    }
+    // Check pass button
+    if (Math.hypot(tx - btnPassCX, ty - btnPassCY) < BTN_R + 10) {
+      passTouchId = t.identifier;
+      wantPass = true;
+      continue;
+    }
+    // Left half = joystick
+    if (tx < W * 0.55 && joyTouchId === null) {
+      joyTouchId = t.identifier;
+      joyActive = true;
+      joyCX = tx; joyCY = ty;
+      joyDX = 0; joyDY = 0;
+    }
   }
-}, { passive: false });
-
-function resetJoy() {
-  joyTouch = null; input.x = 0; input.y = 0;
-  joyBase.style.display = 'none';
-  joyKnob.style.display = 'none';
 }
-joyZone.addEventListener('touchend', e => {
-  for (const t of e.changedTouches) if (t.identifier === joyTouch) resetJoy();
-});
-joyZone.addEventListener('touchcancel', resetJoy);
-
-document.getElementById('btnShoot').addEventListener('touchstart', e => { e.preventDefault(); wantShoot = true; }, { passive: false });
-document.getElementById('btnPass').addEventListener('touchstart', e => { e.preventDefault(); wantPass = true; }, { passive: false });
+function handleTouchMove(e) {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier === joyTouchId) {
+      let dx = t.clientX - joyCX, dy = t.clientY - joyCY;
+      const d = Math.hypot(dx, dy);
+      if (d > JOY_R) { dx *= JOY_R / d; dy *= JOY_R / d; }
+      joyDX = dx; joyDY = dy;
+      input.x = dx / JOY_R;
+      input.y = dy / JOY_R;
+    }
+  }
+}
+function handleTouchEnd(e) {
+  for (const t of e.changedTouches) {
+    if (t.identifier === joyTouchId) {
+      joyTouchId = null; joyActive = false;
+      joyDX = 0; joyDY = 0;
+      input.x = 0; input.y = 0;
+    }
+    if (t.identifier === shootTouchId) shootTouchId = null;
+    if (t.identifier === passTouchId) passTouchId = null;
+  }
+}
+document.addEventListener('touchstart', handleTouchStart, { passive: false });
+document.addEventListener('touchmove', handleTouchMove, { passive: false });
+document.addEventListener('touchend', handleTouchEnd);
+document.addEventListener('touchcancel', handleTouchEnd);
 
 // ---- Audio ----
 let ac = null;
@@ -232,8 +243,73 @@ function sndPass() { beep(400, 0.06, 'triangle', 0.1); }
 function sndWhistle() { beep(800, 0.3, 'sine', 0.12); }
 
 // ---- Helpers ----
-function dist(a, b) { return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2); }
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// ---- AI ----
+function updateAI(p, idx, dt) {
+  if (p.goalie) {
+    const gx = p.team === 0 ? 8 : 192;
+    const ty = clamp(puck.y, CY - 18, CY + 18);
+    p.vy += (ty - p.y) * 6 * dt;
+    p.vx += (gx - p.x) * 6 * dt;
+    return;
+  }
+
+  if (puck.owner === p) {
+    // Has puck — attack
+    const goalX = p.team === 0 ? 196 : 4;
+    const a = Math.atan2(CY - p.y, goalX - p.x);
+    p.vx += Math.cos(a) * ACCEL * 0.65 * dt;
+    p.vy += Math.sin(a) * ACCEL * 0.65 * dt;
+    // Shoot when close
+    if ((p.team === 0 && p.x > 155) || (p.team === 1 && p.x < 45)) {
+      puck.owner = null;
+      const sx = p.team === 0 ? 1 : -1;
+      puck.vx = sx * SHOT_SPD * 0.75;
+      puck.vy = (CY - p.y) * 1.5 + (Math.random() - 0.5) * 30;
+      sndShot();
+    }
+    return;
+  }
+
+  // Teammate has puck — spread out and get open
+  if (puck.owner && puck.owner.team === p.team) {
+    // Pick a lane based on index
+    const laneY = idx % 2 === 0 ? CY - 25 : CY + 25;
+    const offX = p.team === 0 ? Math.min(puck.owner.x + 25 + (idx % 3) * 10, 175) : Math.max(puck.owner.x - 25 - (idx % 3) * 10, 25);
+    const a = Math.atan2(laneY - p.y, offX - p.x);
+    p.vx += Math.cos(a) * ACCEL * 0.4 * dt;
+    p.vy += Math.sin(a) * ACCEL * 0.4 * dt;
+    return;
+  }
+
+  // Opponent has puck or loose — but don't all dogpile
+  const target = puck.owner || puck;
+  const dToPuck = dist(p, target);
+
+  // Only closest non-goalie on the team chases hard
+  let iAmClosest = true;
+  for (let j = 0; j < players.length; j++) {
+    const o = players[j];
+    if (o === p || o.team !== p.team || o.goalie) continue;
+    if (dist(o, target) < dToPuck - 3) { iAmClosest = false; break; }
+  }
+
+  if (iAmClosest) {
+    // Chase puck
+    const a = Math.atan2(target.y - p.y, target.x - p.x);
+    p.vx += Math.cos(a) * ACCEL * 0.55 * dt;
+    p.vy += Math.sin(a) * ACCEL * 0.55 * dt;
+  } else {
+    // Cover position — stay in defensive lane
+    const defX = p.team === 0 ? Math.max(target.x - 30, 30) : Math.min(target.x + 30, 170);
+    const defY = idx % 2 === 0 ? CY - 20 : CY + 20;
+    const a = Math.atan2(defY - p.y, defX - p.x);
+    p.vx += Math.cos(a) * ACCEL * 0.35 * dt;
+    p.vy += Math.sin(a) * ACCEL * 0.35 * dt;
+  }
+}
 
 // ---- Update ----
 function update(dt) {
@@ -244,15 +320,13 @@ function update(dt) {
   }
   if (state !== 'playing') return;
 
-  // Clock
   clock -= dt;
   if (clock <= 0) { clock = 0; endPeriod(); return; }
 
-  // Read keyboard
   readKeys();
 
-  // Human player (index 1)
-  const human = players[1];
+  // Human player
+  const human = players[humanIdx];
   human.vx += input.x * ACCEL * dt;
   human.vy += input.y * ACCEL * dt;
 
@@ -261,7 +335,11 @@ function update(dt) {
     wantShoot = false;
     if (puck.owner === human) {
       puck.owner = null;
-      puck.vx = SHOT_SPD; puck.vy = 0; // shoot right toward red goal
+      // Shoot toward opponent goal
+      const goalX = 198, goalY = CY;
+      const a = Math.atan2(goalY - human.y, goalX - human.x);
+      puck.vx = Math.cos(a) * SHOT_SPD;
+      puck.vy = Math.sin(a) * SHOT_SPD;
       sndShot();
     }
   }
@@ -288,102 +366,60 @@ function update(dt) {
 
   // AI
   for (let i = 0; i < players.length; i++) {
-    const p = players[i];
-    if (i === 1) continue; // human
-    if (p.goalie) {
-      // Goalie: track puck Y, stay near goal line
-      const gx = p.team === 0 ? 8 : 192;
-      const ty = clamp(puck.y, CY - 15, CY + 15);
-      p.vy += (ty - p.y) * 5 * dt;
-      p.vx += (gx - p.x) * 5 * dt;
-    } else if (puck.owner === p) {
-      // Has puck — drive toward opponent goal
-      const goalX = p.team === 0 ? 195 : 5;
-      const a = Math.atan2(CY - p.y, goalX - p.x);
-      p.vx += Math.cos(a) * ACCEL * 0.6 * dt;
-      p.vy += Math.sin(a) * ACCEL * 0.6 * dt;
-      // Shoot if close
-      if ((p.team === 0 && p.x > 160) || (p.team === 1 && p.x < 40)) {
-        puck.owner = null;
-        const sx = p.team === 0 ? 1 : -1;
-        puck.vx = sx * SHOT_SPD * 0.7;
-        puck.vy = (Math.random() - 0.5) * 40;
-        sndShot();
-      }
-    } else if (puck.owner && puck.owner.team !== p.team) {
-      // Opponent has puck — chase
-      const a = Math.atan2(puck.y - p.y, puck.x - p.x);
-      p.vx += Math.cos(a) * ACCEL * 0.5 * dt;
-      p.vy += Math.sin(a) * ACCEL * 0.5 * dt;
-    } else if (!puck.owner) {
-      // Loose puck — go for it
-      const a = Math.atan2(puck.y - p.y, puck.x - p.x);
-      p.vx += Math.cos(a) * ACCEL * 0.45 * dt;
-      p.vy += Math.sin(a) * ACCEL * 0.45 * dt;
-    } else {
-      // Teammate has puck — get open
-      const offX = p.team === 0 ? Math.min(puck.x + 30, 180) : Math.max(puck.x - 30, 20);
-      const offY = p.y < CY ? CY - 18 : CY + 18;
-      const a = Math.atan2(offY - p.y, offX - p.x);
-      p.vx += Math.cos(a) * ACCEL * 0.3 * dt;
-      p.vy += Math.sin(a) * ACCEL * 0.3 * dt;
-    }
+    if (i === humanIdx) continue;
+    updateAI(players[i], i, dt);
   }
 
-  // Physics for all players
+  // Physics
   for (let p of players) {
     p.vx *= Math.pow(FRICTION, dt * 60);
     p.vy *= Math.pow(FRICTION, dt * 60);
-    const spd = Math.sqrt(p.vx**2 + p.vy**2);
-    if (spd > MAX_SPD) { p.vx *= MAX_SPD/spd; p.vy *= MAX_SPD/spd; }
+    const spd = Math.hypot(p.vx, p.vy);
+    if (spd > MAX_SPD) { p.vx *= MAX_SPD / spd; p.vy *= MAX_SPD / spd; }
     p.x += p.vx * dt;
     p.y += p.vy * dt;
-    // Clamp to rink (with corner rounding approximation)
-    p.x = clamp(p.x, PR, RW - PR);
-    p.y = clamp(p.y, PR, RH - PR);
+    const r = p.goalie ? GR : PR;
+    p.x = clamp(p.x, r, RW - r);
+    p.y = clamp(p.y, r, RH - r);
   }
 
-  // Puck physics
+  // Puck
   if (puck.owner) {
-    puck.x = puck.owner.x + (puck.owner.team === 0 ? 3 : -3);
-    puck.y = puck.owner.y;
+    const o = puck.owner;
+    const stickDir = o.team === 0 ? 1 : -1;
+    puck.x = o.x + stickDir * (PR + PKR + 1);
+    puck.y = o.y;
     puck.vx = 0; puck.vy = 0;
   } else {
-    puck.vx *= Math.pow(0.985, dt * 60);
-    puck.vy *= Math.pow(0.985, dt * 60);
+    puck.vx *= Math.pow(0.984, dt * 60);
+    puck.vy *= Math.pow(0.984, dt * 60);
     puck.x += puck.vx * dt;
     puck.y += puck.vy * dt;
 
-    // Bounce top/bottom boards
     if (puck.y < PKR) { puck.y = PKR; puck.vy *= -0.6; }
     if (puck.y > RH - PKR) { puck.y = RH - PKR; puck.vy *= -0.6; }
 
-    // Left end: goal check
-    if (puck.x < 3) {
+    // Left goal
+    if (puck.x < 4) {
       if (Math.abs(puck.y - CY) < GOAL_W / 2) {
-        // Check goalie block
         if (dist(puck, players[0]) < GR + PKR + 2) {
-          puck.vx *= -0.5; puck.x = 5;
-        } else {
-          doGoal(1); return; // Red scores
-        }
-      } else { puck.vx *= -0.6; puck.x = 3; }
+          puck.vx *= -0.5; puck.x = 6;
+        } else { doGoal(1); return; }
+      } else { puck.vx *= -0.6; puck.x = 4; }
     }
-    // Right end: goal check
-    if (puck.x > RW - 3) {
+    // Right goal
+    if (puck.x > RW - 4) {
       if (Math.abs(puck.y - CY) < GOAL_W / 2) {
         if (dist(puck, players[4]) < GR + PKR + 2) {
-          puck.vx *= -0.5; puck.x = RW - 5;
-        } else {
-          doGoal(0); return; // Blue scores
-        }
-      } else { puck.vx *= -0.6; puck.x = RW - 3; }
+          puck.vx *= -0.5; puck.x = RW - 6;
+        } else { doGoal(0); return; }
+      } else { puck.vx *= -0.6; puck.x = RW - 4; }
     }
 
     // Pickup
     for (let p of players) {
       if (puck.owner) break;
-      if (dist(p, puck) < (p.goalie ? GR : PR) + PKR + 1) {
+      if (dist(p, puck) < (p.goalie ? GR : PR) + PKR + 1.5) {
         puck.owner = p;
       }
     }
@@ -391,7 +427,7 @@ function update(dt) {
 
   // Player collisions
   for (let i = 0; i < players.length; i++) {
-    for (let j = i+1; j < players.length; j++) {
+    for (let j = i + 1; j < players.length; j++) {
       const a = players[i], b = players[j];
       const d = dist(a, b);
       const minD = (a.goalie ? GR : PR) + (b.goalie ? GR : PR);
@@ -400,10 +436,9 @@ function update(dt) {
         const overlap = (minD - d) / 2;
         a.x -= nx * overlap; a.y -= ny * overlap;
         b.x += nx * overlap; b.y += ny * overlap;
-        const dv = (a.vx - b.vx)*nx + (a.vy - b.vy)*ny;
+        const dv = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
         a.vx -= dv * 0.4 * nx; a.vy -= dv * 0.4 * ny;
         b.vx += dv * 0.4 * nx; b.vy += dv * 0.4 * ny;
-        // Knock puck loose
         if (puck.owner === a || puck.owner === b) {
           puck.owner = null;
           puck.vx = (Math.random() - 0.5) * 60;
@@ -413,10 +448,10 @@ function update(dt) {
     }
   }
 
-  // Update particles
+  // Particles
   particles = particles.filter(p => {
     p.x += p.vx * dt; p.y += p.vy * dt;
-    p.life -= dt; p.vx *= 0.95; p.vy *= 0.95;
+    p.life -= dt;
     return p.life > 0;
   });
 }
@@ -427,8 +462,7 @@ function doGoal(team) {
   goalTimer = 2.5;
   sndGoal();
   document.getElementById('goalFlash').style.display = 'flex';
-  // Particles at goal
-  const gx = team === 0 ? RW - 3 : 3;
+  const gx = team === 0 ? RW - 4 : 4;
   for (let i = 0; i < 30; i++) {
     const a = Math.random() * Math.PI * 2, sp = 30 + Math.random() * 80;
     particles.push({ x: gx, y: CY, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, life: 1.5, color: team===0 ? '#4af' : '#f44' });
@@ -437,202 +471,215 @@ function doGoal(team) {
 
 function endPeriod() {
   sndWhistle();
-  if (period >= 3 && score[0] !== score[1]) {
-    state = 'over';
-  } else if (period >= 3 && score[0] === score[1]) {
-    period++;
-    clock = PERIOD_SECS;
-    faceoff();
-  } else {
-    period++;
-    clock = PERIOD_SECS;
-    faceoff();
-  }
+  if (period >= 3 && score[0] !== score[1]) { state = 'over'; }
+  else { period++; clock = PERIOD_SECS; faceoff(); }
 }
 
 // ---- Draw ----
 function drawRink() {
-  // Boards (dark background behind rounded rect)
+  // Boards
   ctx.fillStyle = '#1a2744';
   ctx.beginPath();
   const cr = ws(15);
   const x0 = rX, y0 = rY, w = rW, h = rH;
-  ctx.moveTo(x0 + cr, y0);
-  ctx.lineTo(x0 + w - cr, y0);
-  ctx.arcTo(x0 + w, y0, x0 + w, y0 + cr, cr);
-  ctx.lineTo(x0 + w, y0 + h - cr);
-  ctx.arcTo(x0 + w, y0 + h, x0 + w - cr, y0 + h, cr);
-  ctx.lineTo(x0 + cr, y0 + h);
-  ctx.arcTo(x0, y0 + h, x0, y0 + h - cr, cr);
-  ctx.lineTo(x0, y0 + cr);
-  ctx.arcTo(x0, y0, x0 + cr, y0, cr);
-  ctx.closePath();
-  ctx.fill();
+  ctx.moveTo(x0+cr,y0); ctx.lineTo(x0+w-cr,y0); ctx.arcTo(x0+w,y0,x0+w,y0+cr,cr);
+  ctx.lineTo(x0+w,y0+h-cr); ctx.arcTo(x0+w,y0+h,x0+w-cr,y0+h,cr);
+  ctx.lineTo(x0+cr,y0+h); ctx.arcTo(x0,y0+h,x0,y0+h-cr,cr);
+  ctx.lineTo(x0,y0+cr); ctx.arcTo(x0,y0,x0+cr,y0,cr);
+  ctx.closePath(); ctx.fill();
 
-  // Ice surface (slightly inset)
-  const ins = ws(1.5);
-  ctx.fillStyle = '#e8eef4';
-  ctx.beginPath();
-  const cr2 = cr - ins;
-  ctx.moveTo(x0+ins+cr2, y0+ins);
-  ctx.lineTo(x0+w-ins-cr2, y0+ins);
-  ctx.arcTo(x0+w-ins, y0+ins, x0+w-ins, y0+ins+cr2, cr2);
-  ctx.lineTo(x0+w-ins, y0+h-ins-cr2);
-  ctx.arcTo(x0+w-ins, y0+h-ins, x0+w-ins-cr2, y0+h-ins, cr2);
-  ctx.lineTo(x0+ins+cr2, y0+h-ins);
-  ctx.arcTo(x0+ins, y0+h-ins, x0+ins, y0+h-ins-cr2, cr2);
-  ctx.lineTo(x0+ins, y0+ins+cr2);
-  ctx.arcTo(x0+ins, y0+ins, x0+ins+cr2, y0+ins, cr2);
-  ctx.closePath();
-  ctx.fill();
-
-  // Red center line
-  ctx.strokeStyle = '#cc2222';
+  // Board edge highlight
+  ctx.strokeStyle = '#3a5a84';
   ctx.lineWidth = ws(0.8);
-  ctx.beginPath();
-  ctx.moveTo(wx(CX), wy(1));
-  ctx.lineTo(wx(CX), wy(RH-1));
   ctx.stroke();
+
+  // Ice
+  ctx.fillStyle = '#e8eef4';
+  const ins = ws(2);
+  const cr2 = cr - ins;
+  ctx.beginPath();
+  ctx.moveTo(x0+ins+cr2,y0+ins); ctx.lineTo(x0+w-ins-cr2,y0+ins); ctx.arcTo(x0+w-ins,y0+ins,x0+w-ins,y0+ins+cr2,cr2);
+  ctx.lineTo(x0+w-ins,y0+h-ins-cr2); ctx.arcTo(x0+w-ins,y0+h-ins,x0+w-ins-cr2,y0+h-ins,cr2);
+  ctx.lineTo(x0+ins+cr2,y0+h-ins); ctx.arcTo(x0+ins,y0+h-ins,x0+ins,y0+h-ins-cr2,cr2);
+  ctx.lineTo(x0+ins,y0+ins+cr2); ctx.arcTo(x0+ins,y0+ins,x0+ins+cr2,y0+ins,cr2);
+  ctx.closePath(); ctx.fill();
+
+  // Center red line
+  ctx.strokeStyle = '#cc2222'; ctx.lineWidth = ws(1);
+  ctx.beginPath(); ctx.moveTo(wx(CX),wy(2)); ctx.lineTo(wx(CX),wy(RH-2)); ctx.stroke();
 
   // Blue lines
-  ctx.strokeStyle = '#2244cc';
-  ctx.lineWidth = ws(0.6);
-  ctx.beginPath();
-  ctx.moveTo(wx(65), wy(1)); ctx.lineTo(wx(65), wy(RH-1));
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(wx(135), wy(1)); ctx.lineTo(wx(135), wy(RH-1));
-  ctx.stroke();
+  ctx.strokeStyle = '#2244cc'; ctx.lineWidth = ws(0.8);
+  ctx.beginPath(); ctx.moveTo(wx(65),wy(2)); ctx.lineTo(wx(65),wy(RH-2)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(wx(135),wy(2)); ctx.lineTo(wx(135),wy(RH-2)); ctx.stroke();
 
-  // Red goal lines
-  ctx.strokeStyle = '#cc2222';
-  ctx.lineWidth = ws(0.4);
-  ctx.beginPath();
-  ctx.moveTo(wx(11), wy(1)); ctx.lineTo(wx(11), wy(RH-1));
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(wx(189), wy(1)); ctx.lineTo(wx(189), wy(RH-1));
-  ctx.stroke();
+  // Goal lines
+  ctx.strokeStyle = '#cc2222'; ctx.lineWidth = ws(0.5);
+  ctx.beginPath(); ctx.moveTo(wx(11),wy(2)); ctx.lineTo(wx(11),wy(RH-2)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(wx(189),wy(2)); ctx.lineTo(wx(189),wy(RH-2)); ctx.stroke();
 
   // Center circle
-  ctx.strokeStyle = '#cc2222';
-  ctx.lineWidth = ws(0.4);
-  ctx.beginPath();
-  ctx.arc(wx(CX), wy(CY), ws(15), 0, Math.PI*2);
-  ctx.stroke();
-
-  // Center dot
+  ctx.strokeStyle = '#cc2222'; ctx.lineWidth = ws(0.5);
+  ctx.beginPath(); ctx.arc(wx(CX),wy(CY),ws(15),0,Math.PI*2); ctx.stroke();
   ctx.fillStyle = '#cc2222';
-  ctx.beginPath();
-  ctx.arc(wx(CX), wy(CY), ws(1), 0, Math.PI*2);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(wx(CX),wy(CY),ws(1.2),0,Math.PI*2); ctx.fill();
 
-  // Faceoff circles + dots in zones
-  const faceoffs = [
-    { x: 30, y: 20 }, { x: 30, y: 65 },
-    { x: 170, y: 20 }, { x: 170, y: 65 }
-  ];
-  for (const f of faceoffs) {
-    ctx.strokeStyle = '#cc2222';
-    ctx.lineWidth = ws(0.3);
-    ctx.beginPath();
-    ctx.arc(wx(f.x), wy(f.y), ws(10), 0, Math.PI*2);
-    ctx.stroke();
+  // Faceoff circles
+  const fos = [{x:30,y:20},{x:30,y:65},{x:170,y:20},{x:170,y:65}];
+  for (const f of fos) {
+    ctx.strokeStyle = '#cc2222'; ctx.lineWidth = ws(0.4);
+    ctx.beginPath(); ctx.arc(wx(f.x),wy(f.y),ws(10),0,Math.PI*2); ctx.stroke();
     ctx.fillStyle = '#cc2222';
-    ctx.beginPath();
-    ctx.arc(wx(f.x), wy(f.y), ws(0.8), 0, Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(wx(f.x),wy(f.y),ws(1),0,Math.PI*2); ctx.fill();
   }
 
-  // Neutral zone faceoff dots
-  const nDots = [{x:80,y:20},{x:80,y:65},{x:120,y:20},{x:120,y:65}];
-  for (const d of nDots) {
-    ctx.fillStyle = '#cc2222';
-    ctx.beginPath();
-    ctx.arc(wx(d.x), wy(d.y), ws(0.8), 0, Math.PI*2);
-    ctx.fill();
-  }
-
-  // Goal creases (blue semicircles)
-  ctx.fillStyle = 'rgba(70,150,255,0.25)';
-  ctx.beginPath();
-  ctx.arc(wx(11), wy(CY), ws(8), -Math.PI/2, Math.PI/2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(wx(189), wy(CY), ws(8), Math.PI/2, 3*Math.PI/2);
-  ctx.fill();
+  // Creases
+  ctx.fillStyle = 'rgba(70,150,255,0.2)';
+  ctx.beginPath(); ctx.arc(wx(11),wy(CY),ws(9),-Math.PI/2,Math.PI/2); ctx.fill();
+  ctx.beginPath(); ctx.arc(wx(189),wy(CY),ws(9),Math.PI/2,3*Math.PI/2); ctx.fill();
 
   // Nets
-  ctx.fillStyle = 'rgba(200,200,200,0.5)';
-  ctx.fillRect(wx(0), wy(CY - GOAL_W/2), ws(5), ws(GOAL_W));
-  ctx.strokeStyle = '#c33';
-  ctx.lineWidth = ws(0.3);
-  ctx.strokeRect(wx(0), wy(CY - GOAL_W/2), ws(5), ws(GOAL_W));
+  ctx.fillStyle = 'rgba(180,180,180,0.4)';
+  ctx.strokeStyle = '#c33'; ctx.lineWidth = ws(0.4);
+  ctx.fillRect(wx(0),wy(CY-GOAL_W/2),ws(6),ws(GOAL_W));
+  ctx.strokeRect(wx(0),wy(CY-GOAL_W/2),ws(6),ws(GOAL_W));
+  ctx.fillRect(wx(194),wy(CY-GOAL_W/2),ws(6),ws(GOAL_W));
+  ctx.strokeRect(wx(194),wy(CY-GOAL_W/2),ws(6),ws(GOAL_W));
 
-  ctx.fillStyle = 'rgba(200,200,200,0.5)';
-  ctx.fillRect(wx(195), wy(CY - GOAL_W/2), ws(5), ws(GOAL_W));
-  ctx.strokeStyle = '#c33';
-  ctx.lineWidth = ws(0.3);
-  ctx.strokeRect(wx(195), wy(CY - GOAL_W/2), ws(5), ws(GOAL_W));
+  // Net mesh lines
+  ctx.strokeStyle = 'rgba(200,200,200,0.3)'; ctx.lineWidth = ws(0.15);
+  for (let ny = CY - GOAL_W/2 + 2; ny < CY + GOAL_W/2; ny += 2) {
+    ctx.beginPath(); ctx.moveTo(wx(0),wy(ny)); ctx.lineTo(wx(5),wy(ny)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(wx(195),wy(ny)); ctx.lineTo(wx(200),wy(ny)); ctx.stroke();
+  }
 }
 
-function drawPlayers() {
-  for (let i = 0; i < players.length; i++) {
-    const p = players[i];
-    const px = wx(p.x), py = wy(p.y);
-    const r = ws(p.goalie ? GR : PR);
+function drawPlayer(p, idx) {
+  const px = wx(p.x), py = wy(p.y);
+  const r = ws(p.goalie ? GR : PR);
+  const isHuman = idx === humanIdx;
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
-    ctx.beginPath();
-    ctx.ellipse(px, py + r*0.4, r*1.1, r*0.4, 0, 0, Math.PI*2);
-    ctx.fill();
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(px + ws(0.5), py + r * 0.5, r * 1.15, r * 0.35, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-    // Body
-    ctx.fillStyle = p.team === 0 ? '#2266ff' : '#ee3333';
+  // Stick (line from player toward puck direction)
+  const stickAngle = puck.owner === p
+    ? (p.team === 0 ? 0 : Math.PI)
+    : Math.atan2(puck.y - p.y, puck.x - p.x);
+  const stickLen = ws(STICK_LEN);
+  ctx.strokeStyle = '#5a3a1a';
+  ctx.lineWidth = ws(0.5);
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.lineTo(px + Math.cos(stickAngle) * stickLen, py + Math.sin(stickAngle) * stickLen);
+  ctx.stroke();
+  // Blade
+  const bx = px + Math.cos(stickAngle) * stickLen;
+  const by = py + Math.sin(stickAngle) * stickLen;
+  const bladeAngle = stickAngle + Math.PI / 2;
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = ws(0.7);
+  ctx.beginPath();
+  ctx.moveTo(bx - Math.cos(bladeAngle) * ws(1.5), by - Math.sin(bladeAngle) * ws(1.5));
+  ctx.lineTo(bx + Math.cos(bladeAngle) * ws(1.5), by + Math.sin(bladeAngle) * ws(1.5));
+  ctx.stroke();
+
+  // Human selection ring (pulsing)
+  if (isHuman) {
+    const pulse = 0.7 + 0.3 * Math.sin(Date.now() / 200);
+    ctx.strokeStyle = `rgba(255,238,0,${pulse})`;
+    ctx.lineWidth = ws(0.6);
     ctx.beginPath();
-    ctx.arc(px, py, r, 0, Math.PI*2);
-    ctx.fill();
-    ctx.strokeStyle = p.team === 0 ? '#1144cc' : '#cc1111';
-    ctx.lineWidth = ws(0.3);
+    ctx.arc(px, py, r + ws(1.8), 0, Math.PI * 2);
     ctx.stroke();
+    // Arrow above
+    ctx.fillStyle = '#ffee00';
+    const aw = ws(3), ah = ws(2.5);
+    ctx.beginPath();
+    ctx.moveTo(px, py - r - ws(4));
+    ctx.lineTo(px - aw, py - r - ws(1.5));
+    ctx.lineTo(px + aw, py - r - ws(1.5));
+    ctx.closePath();
+    ctx.fill();
+  }
 
-    // Goalie "G" label
-    if (p.goalie) {
-      ctx.fillStyle = '#fff';
-      ctx.font = `bold ${Math.round(r*1.2)}px Arial`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('G', px, py);
-    }
+  // Body circle
+  const grad = ctx.createRadialGradient(px - r*0.3, py - r*0.3, r*0.1, px, py, r);
+  if (p.team === 0) {
+    grad.addColorStop(0, '#5599ff');
+    grad.addColorStop(1, '#1144cc');
+  } else {
+    grad.addColorStop(0, '#ff6644');
+    grad.addColorStop(1, '#cc1111');
+  }
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(px, py, r, 0, Math.PI * 2);
+  ctx.fill();
 
-    // Human indicator (yellow ring + arrow)
-    if (i === 1) {
-      ctx.strokeStyle = '#ffee00';
-      ctx.lineWidth = ws(0.4);
-      ctx.beginPath();
-      ctx.arc(px, py, r + ws(1), 0, Math.PI*2);
-      ctx.stroke();
-      // Arrow
-      ctx.fillStyle = '#ffee00';
-      ctx.beginPath();
-      ctx.moveTo(px, py - r - ws(3));
-      ctx.lineTo(px - ws(2), py - r - ws(1));
-      ctx.lineTo(px + ws(2), py - r - ws(1));
-      ctx.closePath();
-      ctx.fill();
-    }
+  // Jersey outline
+  ctx.strokeStyle = p.team === 0 ? '#0033aa' : '#990000';
+  ctx.lineWidth = ws(0.35);
+  ctx.stroke();
+
+  // White stripe on jersey
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = ws(0.5);
+  ctx.beginPath();
+  ctx.arc(px, py, r * 0.65, -0.3, 0.3);
+  ctx.stroke();
+
+  // Jersey number
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.round(r * 1.1)}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(p.num, px, py + ws(0.3));
+
+  // "YOU" label for human
+  if (isHuman) {
+    ctx.fillStyle = '#ffee00';
+    ctx.font = `bold ${Math.round(ws(2.5))}px Arial`;
+    ctx.fillText('YOU', px, py - r - ws(5.5));
   }
 }
 
 function drawPuck() {
-  if (puck.owner) return; // drawn with player
+  if (puck.owner) return;
   const px = wx(puck.x), py = wy(puck.y);
   const r = ws(PKR);
+
+  // Puck shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(px + ws(0.3), py + ws(0.5), r * 1.2, r * 0.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Puck body
   ctx.fillStyle = '#111';
   ctx.beginPath();
-  ctx.arc(px, py, r, 0, Math.PI*2);
+  ctx.arc(px, py, r, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = '#444';
+  ctx.lineWidth = ws(0.3);
+  ctx.stroke();
+
+  // Highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.beginPath();
+  ctx.arc(px - r * 0.25, py - r * 0.25, r * 0.45, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Puck indicator ring (so you can always find it)
+  const pulse = 0.3 + 0.3 * Math.sin(Date.now() / 150);
+  ctx.strokeStyle = `rgba(255,255,255,${pulse})`;
+  ctx.lineWidth = ws(0.25);
+  ctx.beginPath();
+  ctx.arc(px, py, r + ws(1.5), 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 function drawParticles() {
@@ -640,10 +687,73 @@ function drawParticles() {
     ctx.globalAlpha = Math.min(1, p.life);
     ctx.fillStyle = p.color;
     ctx.beginPath();
-    ctx.arc(wx(p.x), wy(p.y), ws(1.5), 0, Math.PI*2);
+    ctx.arc(wx(p.x), wy(p.y), ws(1.5), 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
+}
+
+function drawTouchControls() {
+  if (!isMobile || state === 'menu' || state === 'over') return;
+
+  // Joystick base (always visible at fixed position when not active)
+  const baseX = joyActive ? joyCX : 85;
+  const baseY = joyActive ? joyCY : H - 90;
+
+  // Base
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(baseX, baseY, JOY_R, 0, Math.PI * 2);
+  ctx.fill(); ctx.stroke();
+
+  // Knob
+  const knobX = baseX + joyDX;
+  const knobY = baseY + joyDY;
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath();
+  ctx.arc(knobX, knobY, KNOB_R, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Direction indicator lines on base
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  for (let a = 0; a < 4; a++) {
+    const ang = a * Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(baseX + Math.cos(ang) * 15, baseY + Math.sin(ang) * 15);
+    ctx.lineTo(baseX + Math.cos(ang) * (JOY_R - 5), baseY + Math.sin(ang) * (JOY_R - 5));
+    ctx.stroke();
+  }
+
+  // Shoot button
+  btnShootCX = W - 70;
+  btnShootCY = H - 120;
+  ctx.fillStyle = shootTouchId !== null ? 'rgba(255,60,60,0.6)' : 'rgba(220,40,40,0.4)';
+  ctx.strokeStyle = 'rgba(255,100,100,0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(btnShootCX, btnShootCY, BTN_R, 0, Math.PI * 2);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('SHOOT', btnShootCX, btnShootCY);
+
+  // Pass button
+  btnPassCX = W - 70;
+  btnPassCY = H - 50;
+  ctx.fillStyle = passTouchId !== null ? 'rgba(60,140,255,0.6)' : 'rgba(40,120,220,0.4)';
+  ctx.strokeStyle = 'rgba(100,160,255,0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(btnPassCX, btnPassCY, BTN_R, 0, Math.PI * 2);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px Arial';
+  ctx.fillText('PASS', btnPassCX, btnPassCY);
 }
 
 function drawHUD() {
@@ -657,18 +767,19 @@ function drawHUD() {
 function draw() {
   ctx.fillStyle = '#0a0a0a';
   ctx.fillRect(0, 0, W, H);
-  resize();
+
   drawRink();
   drawPuck();
-  drawPlayers();
+  for (let i = 0; i < players.length; i++) drawPlayer(players[i], i);
   drawParticles();
+  drawTouchControls();
 
   if (state === 'faceoff') {
     ctx.fillStyle = '#fff';
     ctx.font = `bold ${Math.round(ws(6))}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(faceoffTimer > 0.8 ? 'FACE OFF' : 'GO!', wx(CX), wy(CY) - ws(12));
+    ctx.fillText(faceoffTimer > 0.8 ? 'FACE OFF' : 'GO!', wx(CX), wy(CY) - ws(14));
   }
 
   if (state === 'over') {
@@ -677,12 +788,12 @@ function draw() {
     ctx.fillStyle = '#fff';
     ctx.font = `bold ${Math.round(ws(8))}px Arial`;
     ctx.textAlign = 'center';
-    ctx.fillText('GAME OVER', W/2, H/2 - ws(6));
+    ctx.fillText('GAME OVER', W / 2, H / 2 - ws(6));
     ctx.font = `${Math.round(ws(5))}px Arial`;
-    ctx.fillText(score[0] > score[1] ? '🔵 BLUE WINS!' : '🔴 RED WINS!', W/2, H/2 + ws(2));
+    ctx.fillText(score[0] > score[1] ? '🔵 BLUE WINS!' : '🔴 RED WINS!', W / 2, H / 2 + ws(2));
     ctx.font = `${Math.round(ws(3))}px Arial`;
     ctx.fillStyle = '#888';
-    ctx.fillText('Tap to play again', W/2, H/2 + ws(8));
+    ctx.fillText('Tap to play again', W / 2, H / 2 + ws(8));
   }
 
   drawHUD();
@@ -713,7 +824,6 @@ function loop(ts) {
 function startGame() {
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('hud').style.display = 'block';
-  if (isMobile) document.getElementById('controls').style.display = 'block';
   ensureAudio();
   if (ac) ac.resume();
   score = [0, 0]; period = 1; clock = PERIOD_SECS;
@@ -722,13 +832,10 @@ function startGame() {
   if (!lastT) requestAnimationFrame(loop);
 }
 
-// Play button
 document.getElementById('playBtn').addEventListener('click', e => { e.stopPropagation(); startGame(); });
 document.getElementById('playBtn').addEventListener('touchend', e => { e.preventDefault(); startGame(); });
-
-// Restart from game over
 document.addEventListener('click', () => { if (state === 'over') startGame(); });
-document.addEventListener('touchend', () => { if (state === 'over') startGame(); });
+document.addEventListener('touchend', e => { if (state === 'over') startGame(); });
 </script>
 </body>
 </html>
