@@ -65,7 +65,7 @@ let W = window.innerWidth, H = window.innerHeight;
 // ========== THREE.JS SETUP ==========
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x060a14);
-scene.fog = new THREE.FogExp2(0x060a14, 0.005);
+scene.fog = new THREE.FogExp2(0x060a14, 0.003);
 
 const camera = new THREE.PerspectiveCamera(72, W / H, 0.1, 400);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -263,17 +263,21 @@ const hArrow = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.2, 8), new THREE.Mes
 hArrow.position.y = 1.5; hArrow.rotation.x = Math.PI; humanIndicator.add(hArrow);
 scene.add(humanIndicator);
 
-// Puck
+// Puck — raised above ice, bigger, brighter glow
 const puckMesh = new THREE.Mesh(
-  new THREE.CylinderGeometry(PKR * 0.7, PKR * 0.7, 0.5, 16),
-  new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.2 })
+  new THREE.CylinderGeometry(PKR, PKR, 0.6, 16),
+  new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.3 })
 );
+puckMesh.castShadow = true;
 scene.add(puckMesh);
 const puckGlow = new THREE.Mesh(
-  new THREE.TorusGeometry(PKR * 0.9, 0.1, 8, 24),
-  new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0.6 })
+  new THREE.TorusGeometry(PKR * 1.4, 0.15, 8, 28),
+  new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0.7 })
 );
 puckGlow.rotation.x = Math.PI / 2; scene.add(puckGlow);
+// Puck spotlight (always lights the puck area)
+const puckLight = new THREE.PointLight(0xffdd44, 0.8, 20, 2);
+scene.add(puckLight);
 
 // ========== GAME STATE ==========
 let state = 'menu', score = [0, 0], period = 1, clock = PERIOD_SECS;
@@ -311,8 +315,12 @@ function faceoff() {
     players[i]._wasTouching = false;
   }
   faceoffTimer = 1.5; state = 'faceoff';
-  const [tx, tz] = G(players[humanIdx].x, players[humanIdx].y);
-  camCur.x = tx - CAM_BACK; camCur.z = tz;
+  // Snap camera to face the puck from behind player
+  const [htx, htz] = G(players[humanIdx].x, players[humanIdx].y);
+  const [ptx, ptz] = G(puck.x, puck.y);
+  camFacingAngle = Math.atan2(ptz - htz, ptx - htx);
+  camCur.x = htx - Math.cos(camFacingAngle) * CAM_BACK;
+  camCur.z = htz - Math.sin(camFacingAngle) * CAM_BACK;
   faceoffEl.textContent = 'FACE OFF'; faceoffEl.style.display = 'block';
 }
 
@@ -555,22 +563,23 @@ function update(dt) {
 
   readKeys();
 
-  // Human movement
+  // Human movement — relative to camera facing direction
   const human = players[humanIdx];
-  human.vx += moveF * ACCEL * dt;
-  human.vy += moveS * ACCEL * dt;
+  // Camera faces camFacingAngle in Three.js XZ, which maps directly to game XY
+  const cf = camFacingAngle;
+  const worldMoveX = moveF * Math.cos(cf) - moveS * Math.sin(cf);
+  const worldMoveY = moveF * Math.sin(cf) + moveS * Math.cos(cf);
+  human.vx += worldMoveX * ACCEL * dt;
+  human.vy += worldMoveY * ACCEL * dt;
 
-  // Human stick control
+  // Human stick control — also camera-relative
   if (stickActive) {
-    // Map right stick input to game world angle
-    // stickAimX = screen right, stickAimY = screen down (positive)
-    // In game: forward = +x, right = +y
-    // Right stick up (-Y) = forward (+x game) = angle 0
-    // Right stick right (+X) = right (+y game) = angle π/2
-    const targetAngle = Math.atan2(stickAimX, -stickAimY);
-    human._stickTarget = targetAngle;
+    // Right stick: up = toward puck (camera forward), right = camera right
+    const localAngle = Math.atan2(stickAimX, -stickAimY);
+    human._stickTarget = cf + localAngle;
   } else {
-    human._stickTarget = 0; // default: forward
+    // Default: stick points toward puck
+    human._stickTarget = Math.atan2(puck.y - human.y, puck.x - human.x);
   }
 
   // AI movement + stick targets
@@ -668,18 +677,33 @@ function endPeriod() {
 }
 
 // ========== CAMERA ==========
-const CAM_BACK = 22, CAM_UP = 14, CAM_LOOK_AHEAD = 12;
+const CAM_BACK = 20, CAM_UP = 13;
 const camCur = { x: 0, y: CAM_UP, z: 0 };
 const SMOOTH = 0.1;
+let camFacingAngle = 0; // smoothed angle from player toward puck (in Three.js XZ)
 
 function updateCamera() {
   const h = players[humanIdx];
-  const [tx, tz] = G(h.x, h.y);
-  camCur.x += (tx - CAM_BACK - camCur.x) * SMOOTH;
-  camCur.z += (tz - camCur.z) * SMOOTH;
+  const [hx, hz] = G(h.x, h.y);
+  const [px, pz] = G(puck.x, puck.y);
+
+  // Target angle: from player toward puck
+  const targetAngle = Math.atan2(pz - hz, px - hx);
+  // Smooth the camera rotation (avoid whiplash when puck flips sides)
+  const aDiff = angleDiff(targetAngle, camFacingAngle);
+  camFacingAngle += aDiff * 0.05; // slow smooth orbit
+
+  // Camera behind player (opposite direction from puck)
+  const tgtX = hx - Math.cos(camFacingAngle) * CAM_BACK;
+  const tgtZ = hz - Math.sin(camFacingAngle) * CAM_BACK;
+  camCur.x += (tgtX - camCur.x) * SMOOTH;
+  camCur.z += (tgtZ - camCur.z) * SMOOTH;
+
   camera.position.set(camCur.x, CAM_UP, camCur.z);
-  // Look ahead of the player, following lateral position closely
-  camera.lookAt(camCur.x + CAM_LOOK_AHEAD, 1, camCur.z * 0.8);
+  // Look past the player toward the puck
+  const lookX = hx + Math.cos(camFacingAngle) * 10;
+  const lookZ = hz + Math.sin(camFacingAngle) * 10;
+  camera.lookAt(lookX, 1, lookZ);
 }
 
 // ========== SYNC 3D ==========
@@ -712,13 +736,15 @@ function sync3D(t) {
   ringMat.opacity = 0.6 + 0.4 * Math.sin(t * 5);
   hArrow.position.y = 1.2 + Math.sin(t * 4) * 0.3;
 
-  // Puck
+  // Puck — always visible, raised well above ice
   const [px, pz] = G(puck.x, puck.y);
-  puckMesh.position.set(px, 0.25, pz);
+  puckMesh.position.set(px, 0.5, pz);
   puckMesh.visible = true;
-  puckGlow.position.set(px, 0.35, pz);
+  puckGlow.position.set(px, 0.6, pz);
   puckGlow.visible = true;
-  puckGlow.material.opacity = 0.3 + 0.3 * Math.sin(t * 8);
+  puckGlow.material.opacity = 0.4 + 0.4 * Math.sin(t * 8);
+  // Puck spotlight follows puck
+  puckLight.position.set(px, 5, pz);
 }
 
 // ========== MINIMAP ==========
@@ -770,11 +796,7 @@ function animate() {
 
   if (state === 'goal') {
     goalTimer -= dt;
-    const tCX2 = players[humanIdx].x - 100 - CAM_BACK;
-    const tCZ = players[humanIdx].y - 42.5;
-    camCur.x += (tCX2 - camCur.x) * SMOOTH; camCur.z += (tCZ - camCur.z) * SMOOTH;
-    camera.position.set(camCur.x, CAM_UP, camCur.z);
-    camera.lookAt(camCur.x + CAM_LOOK_AHEAD, 1, camCur.z * 0.8);
+    updateCamera(); // keep camera orbiting during goal
     if (goalTimer <= 0) { document.getElementById('goalFlash').style.display = 'none'; faceoff(); }
   } else {
     update(dt);
