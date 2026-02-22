@@ -67,7 +67,8 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x060a14);
 scene.fog = new THREE.FogExp2(0x060a14, 0.003);
 
-const camera = new THREE.PerspectiveCamera(72, W / H, 0.1, 400);
+const baseFOV = W < H ? 90 : 72; // wider FOV on portrait/mobile
+const camera = new THREE.PerspectiveCamera(baseFOV, W / H, 0.1, 400);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setSize(W, H);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -77,6 +78,7 @@ document.body.prepend(renderer.domElement);
 
 window.addEventListener('resize', () => {
   W = window.innerWidth; H = window.innerHeight;
+  camera.fov = W < H ? 90 : 72;
   camera.aspect = W / H; camera.updateProjectionMatrix();
   renderer.setSize(W, H);
 });
