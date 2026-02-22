@@ -1022,18 +1022,17 @@ function sync3D(t) {
       const strideFreq = 8 + spd * 0.12; // faster skating = faster stride
       const strideAmp = clamp(spd / MAX_SPD, 0, 1) * 0.35; // bigger strides when faster
       if (spd > 3) {
-        // Alternate legs: swing forward/back around the hip (rotation around X in leg-local space)
-        g._legs[0].rotation.x = Math.sin(t * strideFreq) * strideAmp;
-        g._legs[1].rotation.x = Math.sin(t * strideFreq + Math.PI) * strideAmp; // opposite phase
-        // Slight lateral push (skating crossover feel)
-        g._legs[0].position.z = -0.55 * (g._sc||1) + Math.sin(t * strideFreq * 0.5) * 0.08;
-        g._legs[1].position.z = 0.55 * (g._sc||1) + Math.sin(t * strideFreq * 0.5 + Math.PI) * 0.08;
+        // Alternate legs: swing forward/back (rotation around Z = fore/aft in player-local space)
+        g._legs[0].rotation.z = Math.sin(t * strideFreq) * strideAmp;
+        g._legs[1].rotation.z = Math.sin(t * strideFreq + Math.PI) * strideAmp; // opposite phase
+        g._legs[0].rotation.x = 0;
+        g._legs[1].rotation.x = 0;
       } else {
         // Idle: subtle weight shift
-        g._legs[0].rotation.x = Math.sin(t * 1.5) * 0.03;
-        g._legs[1].rotation.x = Math.sin(t * 1.5 + Math.PI) * 0.03;
-        g._legs[0].position.z = -0.55 * (g._sc||1);
-        g._legs[1].position.z = 0.55 * (g._sc||1);
+        g._legs[0].rotation.z = Math.sin(t * 1.5) * 0.03;
+        g._legs[1].rotation.z = Math.sin(t * 1.5 + Math.PI) * 0.03;
+        g._legs[0].rotation.x = 0;
+        g._legs[1].rotation.x = 0;
       }
     }
 
