@@ -10,7 +10,7 @@ body { background:#111; overflow:hidden; touch-action:none; font-family:'Segoe U
 canvas { display:block; }
 #startScreen { position:fixed; inset:0; background:linear-gradient(180deg,#0a1628,#1a3a5c); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:100; }
 #startScreen h1 { font-size:72px; color:#fff; text-shadow:0 0 30px #0af,0 0 60px #06f; letter-spacing:12px; margin-bottom:40px; }
-#startScreen button { font-size:28px; padding:16px 60px; background:linear-gradient(180deg,#e22,#b00); color:#fff; border:none; border-radius:12px; cursor:pointer; letter-spacing:4px; }
+#startScreen button { font-size:28px; padding:16px 60px; background:linear-gradient(180deg,#e22,#b00); color:#fff; border:none; border-radius:12px; cursor:pointer; letter-spacing:4px; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
 #startScreen button:hover { background:linear-gradient(180deg,#f44,#d22); }
 #hud { position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:10; display:none; background:rgba(0,0,0,0.7); border-radius:10px; padding:6px 20px; color:#fff; font-size:18px; text-align:center; min-width:260px; }
 #hud .score { font-size:32px; font-weight:bold; }
@@ -29,8 +29,8 @@ canvas { display:block; }
 </style>
 </head>
 <body>
-<div id="startScreen"><h1>OVERTIME</h1><button onclick="startGame()">▶ PLAY</button></div>
 <canvas id="c"></canvas>
+<div id="startScreen"><h1>OVERTIME</h1><p style="color:#8cf;font-size:18px;margin-bottom:30px;letter-spacing:3px">3 v 3 HOCKEY</p><button id="playBtn">▶ PLAY</button></div>
 <div id="hud"><div class="score"><span id="sHome">0</span> - <span id="sAway">0</span></div><div class="period">P<span id="per">1</span> <span id="clock">2:00</span></div></div>
 <div id="controls">
   <div id="joystickArea"><div id="joystickBase"><div id="joystickKnob"></div></div></div>
@@ -590,6 +590,10 @@ function gameLoop(ts){
 // Restart on gameover
 document.addEventListener('click',()=>{if(gameState==='gameover')startGame();});
 document.addEventListener('keydown',()=>{if(gameState==='gameover')startGame();});
+
+// Play button — use addEventListener for mobile reliability
+document.getElementById('playBtn').addEventListener('click', function(e){e.stopPropagation();startGame();});
+document.getElementById('playBtn').addEventListener('touchend', function(e){e.preventDefault();e.stopPropagation();startGame();});
 
 requestAnimationFrame(gameLoop);
 </script>
